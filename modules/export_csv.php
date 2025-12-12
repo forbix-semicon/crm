@@ -1,7 +1,7 @@
 <?php
 /**
- * Backup Module
- * Creates backup of CRM data in CSV format
+ * Export CSV Module
+ * Creates CSV export of CRM data
  */
 
 session_start();
@@ -11,25 +11,25 @@ require_once 'db.php';
 
 requireAgent();
 
-header('Content-Type: application/json');
-
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo json_encode(['success' => false, 'message' => 'Invalid request method']);
-    exit;
+    die('Invalid request method');
 }
 
 try {
     $pdo = Database::getConnection();
     
-    // Create backups directory if it doesn't exist
-    $backupDir = __DIR__ . '/../backups';
-    if (!is_dir($backupDir)) {
-        mkdir($backupDir, 0755, true);
-    }
-    
-    // Generate backup filename: crm_yymmdd_hhmm.csv
+    // Generate export filename: crm_yymmdd_hhmm.csv
     $timestamp = date('ymd_His');
-    $backupFile = $backupDir . '/crm_' . $timestamp . '.csv';
+    $filename = 'crm_' . $timestamp . '.csv';
+    
+    // Set headers for file download
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+    
+    // Open output stream
+    $output = fopen('php://output', 'w');
     
     // Fetch all customers
     $stmt = $pdo->query("
@@ -63,13 +63,6 @@ try {
         $maxComments = max($maxComments, count($customerComments));
     }
     
-    // Open file for writing
-    $file = fopen($backupFile, 'w');
-    
-    if ($file === false) {
-        throw new Exception("Could not create backup file");
-    }
-    
     // Write header
     $header = [
         'Customer ID', 'Date', 'Time', 'Customer Name', 'Company Name',
@@ -83,7 +76,7 @@ try {
         $header[] = 'Comment ' . $i;
     }
     
-    fputcsv($file, $header);
+    fputcsv($output, $header);
     
     // Write data rows
     foreach ($customers as $customer) {
@@ -111,18 +104,15 @@ try {
             $row[] = $customerComments[$i] ?? '';
         }
         
-        fputcsv($file, $row);
+        fputcsv($output, $row);
     }
     
-    fclose($file);
-    
-    echo json_encode([
-        'success' => true,
-        'message' => 'Backup created successfully',
-        'filename' => basename($backupFile)
-    ]);
+    fclose($output);
+    exit;
     
 } catch (Exception $e) {
-    error_log("Backup error: " . $e->getMessage());
-    echo json_encode(['success' => false, 'message' => 'Backup failed: ' . $e->getMessage()]);
+    error_log("Export CSV error: " . $e->getMessage());
+    die('Export failed: ' . $e->getMessage());
 }
+
+

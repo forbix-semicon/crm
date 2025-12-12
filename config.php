@@ -13,7 +13,7 @@ if ($basePath === '/' || $basePath === '\\') {
 // Define base URL path
 define('BASE_PATH', $basePath);
 
-// SQLite Database file path
+// libSQL (SQLite fork) Database file path
 define('DB_PATH', __DIR__ . '/data/crm.db');
 
 // Timezone

@@ -1,16 +1,18 @@
-# CRM System - SQLite Version
+# CRM System - libSQL Version
 
-A modular CRM system built with PHP, SQLite, HTML, CSS, and JavaScript.
+A modular CRM system built with PHP, libSQL (SQLite fork), HTML, CSS, and JavaScript. Features separate admin and agent interfaces with dynamic configuration management.
 
 ## Features
 
-- **Login System**: Agent authentication with popup login
-- **Customer Management**: Complete customer data entry form
-- **SQLite Database**: File-based database (no server required)
+- **Dual Login System**: Separate admin and agent authentication
+- **Admin Panel**: Manage agents, product categories, customer types, and statuses
+- **Agent Interface**: Customer data entry with dynamic form fields
+- **libSQL Database**: File-based database (SQLite compatible)
 - **Modular Architecture**: Separate PHP modules for easy maintenance
+- **Multi-Agent Support**: Multiple agents can work simultaneously
+- **Dynamic Configuration**: Product categories, customer types, and statuses managed by admin
 - **Backup System**: CSV backup functionality
 - **Responsive Design**: Modern, mobile-friendly UI
-- **Works Everywhere**: Compatible with XAMPP (localhost) and internet servers
 
 ## Requirements
 
@@ -30,7 +32,7 @@ Upload all files to your web server directory:
 
 Ensure the `data/` directory is writable:
 - **Linux/Internet Server**: `chmod 755 data` or `chmod 777 data`
-- **Windows/XAMPP**: Usually works by default, but ensure the folder has write permissions
+- **Windows/XAMPP**: Usually works by default
 
 ### 3. Access the CRM
 
@@ -42,33 +44,58 @@ The database will be automatically created on first access in the `data/` direct
 
 ## Login Credentials
 
+### Admin
+- **Username**: admin
+- **Password**: admin
+- **Access**: Admin panel for managing system configuration
+
+### Agent (Default)
 - **Username**: agent1
 - **Password**: agent1
+- **Access**: Agent interface for customer data entry
 
 ## Module Structure
 
-- `modules/auth.php` - Authentication functions
-- `modules/db.php` - SQLite database connection
+### Core Modules
+- `modules/auth.php` - Authentication functions (admin/agent)
+- `modules/db.php` - libSQL database connection
 - `modules/db_setup.php` - Database schema creation
-- `modules/form_handler.php` - Form submission handler
-- `modules/backup.php` - Backup functionality
-- `modules/customer_id_generator.php` - Auto-generate customer IDs
 - `modules/login_handler.php` - Login processing
 - `modules/login_popup.php` - Login popup UI
 - `modules/logout.php` - Logout handler
 
-## Database
+### Agent Modules
+- `modules/form_handler.php` - Form submission handler
+- `modules/comments_handler.php` - Comments save/update handler
+- `modules/backup.php` - Backup functionality
+- `modules/customer_id_generator.php` - Auto-generate customer IDs
 
-- **Location**: `data/crm.db` (SQLite database file)
-- **Auto-created**: Database and tables are created automatically on first access
-- **Backup**: Use the Backup button to create CSV backups in `backups/` directory
+### Admin Modules
+- `modules/admin_agents.php` - Agent management
+- `modules/admin_categories.php` - Product categories management
+- `modules/admin_types.php` - Customer types management
+- `modules/admin_statuses.php` - Statuses management
 
 ## Database Schema
 
+### users table
+- id, username, password, role (admin/agent)
+- created_at, updated_at
+
+### product_categories table
+- id, name, display_order
+- created_at
+
+### customer_types table
+- id, name, display_order
+- created_at
+
+### statuses table
+- id, name, display_order
+- created_at
+
 ### customers table
-- id (INTEGER PRIMARY KEY)
-- customer_id (VARCHAR, UNIQUE)
-- date, time
+- id, customer_id (UNIQUE), date, time
 - customer_name, company_name
 - primary_contact, secondary_contact
 - email_id, city
@@ -78,79 +105,116 @@ The database will be automatically created on first access in the `data/` direct
 - created_at, updated_at
 
 ### customer_comments table
-- id (INTEGER PRIMARY KEY)
-- customer_id (FOREIGN KEY)
-- comment_text (TEXT)
-- comment_order (INTEGER)
-- created_at (DATETIME)
+- id, customer_id (FOREIGN KEY)
+- comment_text, comment_order
+- created_at, updated_at
 
 ## Features
 
-### Customer ID Generation
-- Auto-generates 5-digit customer IDs starting from CID20001
-- Format: CID20001, CID20002, etc.
+### Admin Features
 
-### Form Fields
-- Customer ID (auto-generated, readonly)
-- Date (calendar, default: today)
-- Time (manual, default: current time IST)
-- Customer Name (multiline)
-- Company Name (multiline)
-- Primary/Secondary Contact (multiline)
-- Email ID (multiline, validated for @ symbol)
-- City (multiline)
-- Product Category (multiple checkboxes)
-- Requirement (multiline)
-- Customer Type (radio: New/Existing)
-- Source (dropdown)
-- Status (dropdown)
-- Comments (multiple, dynamic)
+1. **Agent Management**
+   - Create new agent accounts
+   - Edit existing agents (username/password)
+   - View all agents
+   - Delete agents
 
-### Backup
-- Creates CSV backup files in `backups/` directory
-- Format: `crm_yymmdd_hhmm.csv`
-- Includes all customer data and comments
+2. **Product Categories Management**
+   - Add new product categories
+   - Edit existing categories
+   - Delete categories
+   - Categories appear dynamically in agent form
 
-## Advantages of SQLite
+3. **Customer Types Management**
+   - Add new customer types
+   - Edit existing types
+   - Delete types
+   - Types appear dynamically in agent form
+
+4. **Statuses Management**
+   - Add new statuses
+   - Edit existing statuses
+   - Delete statuses
+   - Statuses appear dynamically in agent form
+
+### Agent Features
+
+1. **Customer Data Entry**
+   - Auto-generated Customer ID (CID20001+)
+   - Date (calendar, default: today)
+   - Time (manual, default: current IST)
+   - Customer Name, Company Name (multiline)
+   - Primary/Secondary Contact (multiline)
+   - Email ID (multiline, validates @ and .)
+   - City (multiline)
+   - Product Category (multiple checkboxes, dynamic from admin)
+   - Requirement (multiline)
+   - Customer Type (radio, dynamic from admin)
+   - Source (dropdown: Phone Call, Whatsup, Website, Email, Social Media, Not Sure)
+   - Status (dropdown, dynamic from admin)
+   - Comments (multiple, dynamic)
+
+2. **Comments Management**
+   - Add multiple comments
+   - Save/Update Comments button (saves independently)
+   - Remove individual comments
+
+3. **Other Features**
+   - Save button (saves all customer data)
+   - Cancel button (clears form)
+   - Backup button (creates CSV backup)
+   - Search box (placeholder)
+   - Short/Expanded Report buttons (placeholders)
+
+## Multi-Agent Support
+
+- Multiple agents can log in and work simultaneously
+- Each customer record tracks which agent created it (assigned_to field)
+- No conflicts - libSQL handles concurrent access
+
+## Advantages of libSQL
 
 1. **No Server Required**: Works without a separate database server
 2. **Portable**: Single database file (`data/crm.db`)
 3. **Easy Backup**: Just copy the database file
 4. **Works Everywhere**: Compatible with XAMPP and internet servers
 5. **Zero Configuration**: No database setup needed
+6. **SQLite Compatible**: Uses standard SQLite syntax
 
 ## File Structure
 
 ```
 crm/
-├── index.php                 # Main CRM page
+├── index.php                 # Agent interface
+├── admin.php                 # Admin panel
 ├── config.php                # Configuration
-├── modules/                   # PHP modules
+├── modules/                  # PHP modules
 │   ├── auth.php
 │   ├── db.php
 │   ├── db_setup.php
 │   ├── form_handler.php
+│   ├── comments_handler.php
 │   ├── backup.php
 │   ├── customer_id_generator.php
 │   ├── login_handler.php
 │   ├── login_popup.php
-│   └── logout.php
+│   ├── logout.php
+│   ├── admin_agents.php
+│   ├── admin_categories.php
+│   ├── admin_types.php
+│   └── admin_statuses.php
 ├── assets/
 │   ├── css/
-│   │   └── style.css
+│   │   ├── style.css
+│   │   └── admin.css
 │   └── js/
-│       └── main.js
-├── data/                      # SQLite database (auto-created)
+│       ├── main.js
+│       └── admin.js
+├── data/                      # libSQL database (auto-created)
 │   └── crm.db
 └── backups/                   # CSV backups
     └── crm_*.csv
 ```
-
-## Future Features (Placeholders)
-
-- Search functionality (Customer ID, Phone, Email)
-- Short Report
-- Expanded Report
 
 ## Security Notes
 
@@ -159,6 +223,7 @@ crm/
 - Enable HTTPS in production
 - Set proper file permissions for `data/` directory
 - Disable error display in production (`display_errors = 0`)
+- Consider password hashing for production use
 
 ## Troubleshooting
 
@@ -175,6 +240,11 @@ crm/
 ### Backup Not Working
 - Check `backups/` directory exists and is writable
 - Verify file permissions
+
+### Dynamic Fields Not Updating
+- Clear browser cache
+- Check admin panel to verify items are created
+- Refresh the agent page
 
 ## License
 

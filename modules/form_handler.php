@@ -1,7 +1,7 @@
 <?php
 /**
  * Form Handler Module
- * Processes form submissions and saves to SQLite
+ * Processes form submissions and saves to libSQL
  */
 
 session_start();
@@ -9,7 +9,7 @@ require_once __DIR__ . '/../config.php';
 require_once 'auth.php';
 require_once 'db.php';
 
-requireLogin();
+requireAgent();
 
 header('Content-Type: application/json');
 
@@ -39,14 +39,16 @@ try {
     $comments = isset($_POST['comments']) ? $_POST['comments'] : [];
     $assignedTo = $_SESSION['username'] ?? '';
     
-    // Validate email
+    // Validate email (must contain @ and .)
     if (!empty($emailId)) {
         $emails = explode("\n", $emailId);
         foreach ($emails as $email) {
             $email = trim($email);
-            if (!empty($email) && strpos($email, '@') === false) {
-                echo json_encode(['success' => false, 'message' => 'Invalid email format. Email must contain @ symbol.']);
-                exit;
+            if (!empty($email)) {
+                if (strpos($email, '@') === false || strpos($email, '.') === false) {
+                    echo json_encode(['success' => false, 'message' => 'Invalid email format. Email must contain @ and . symbols.']);
+                    exit;
+                }
             }
         }
     }

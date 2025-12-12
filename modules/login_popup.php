@@ -12,7 +12,7 @@ require_once __DIR__ . '/../config.php';
 <body class="login-page">
     <div class="login-overlay">
         <div class="login-popup">
-            <h2>Agent Login</h2>
+            <h2>CRM Login</h2>
             <form id="loginForm" method="POST" action="<?php echo BASE_PATH; ?>/modules/login_handler.php">
                 <div class="form-group">
                     <label for="username">Login:</label>
@@ -27,6 +27,10 @@ require_once __DIR__ . '/../config.php';
                 <?php endif; ?>
                 <button type="submit" class="btn btn-primary">Login</button>
             </form>
+            <div style="margin-top: 15px; font-size: 12px; color: #666; text-align: center;">
+                <p>Admin: admin / admin</p>
+                <p>Agent: agent1 / agent1</p>
+            </div>
         </div>
     </div>
 </body>

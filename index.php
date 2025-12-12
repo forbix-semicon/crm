@@ -15,6 +15,12 @@ if (!isLoggedIn()) {
     exit;
 }
 
+// Redirect admin to admin page
+if (isAdmin()) {
+    header('Location: admin.php');
+    exit;
+}
+
 // Only load database modules after login check
 require_once 'modules/db.php';
 require_once 'modules/customer_id_generator.php';
@@ -25,21 +31,35 @@ createDatabaseSchema();
 
 // Get next customer ID
 $nextCustomerId = getNextCustomerId();
+
+// Load dynamic data
+$pdo = Database::getConnection();
+$stmt = $pdo->query("SELECT name FROM product_categories ORDER BY display_order, name");
+$productCategories = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+$stmt = $pdo->query("SELECT name FROM customer_types ORDER BY display_order, name");
+$customerTypes = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+$stmt = $pdo->query("SELECT name FROM statuses ORDER BY display_order, name");
+$statuses = $stmt->fetchAll(PDO::FETCH_COLUMN);
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CRM System</title>
+    <title>CRM System - Agent</title>
     <link rel="stylesheet" href="<?php echo BASE_PATH; ?>/assets/css/style.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>CRM System</h1>
+            <h1>CRM System - Agent</h1>
             <div class="user-info">
                 <span>Welcome, <?php echo htmlspecialchars($_SESSION['username']); ?></span>
+                <?php if (isAdmin()): ?>
+                    <a href="<?php echo BASE_PATH; ?>/admin.php" class="btn btn-secondary" style="text-decoration: none; padding: 8px 15px;">Admin Panel</a>
+                <?php endif; ?>
                 <a href="<?php echo BASE_PATH; ?>/modules/logout.php" class="logout-btn">Logout</a>
             </div>
         </header>
@@ -60,9 +80,13 @@ $nextCustomerId = getNextCustomerId();
 
             <!-- Action Buttons -->
             <div class="action-buttons">
+                <button id="listAllBtn" class="btn btn-primary">List All</button>
                 <button id="shortReportBtn" class="btn btn-secondary">Short Report</button>
                 <button id="expandedReportBtn" class="btn btn-secondary">Expanded Report</button>
                 <button id="backupBtn" class="btn btn-primary">Backup</button>
+                <button id="exportBtn" class="btn btn-primary">Export (CSV)</button>
+                <button id="importDbBtn" class="btn btn-primary">Import (DB)</button>
+                <button id="importCsvBtn" class="btn btn-primary">Import (CSV)</button>
             </div>
 
             <!-- CRM Form -->
@@ -129,16 +153,10 @@ $nextCustomerId = getNextCustomerId();
                     <div class="form-row">
                         <div class="form-group full-width">
                             <label>Product Category: (Multiple Selection)</label>
-                            <div class="checkbox-group">
-                                <label><input type="checkbox" name="product_category[]" value="Nurse Call"> Nurse Call</label>
-                                <label><input type="checkbox" name="product_category[]" value="Panic Alarm"> Panic Alarm</label>
-                                <label><input type="checkbox" name="product_category[]" value="Peon Call"> Peon Call</label>
-                                <label><input type="checkbox" name="product_category[]" value="Long Range"> Long Range</label>
-                                <label><input type="checkbox" name="product_category[]" value="Token Display"> Token Display</label>
-                                <label><input type="checkbox" name="product_category[]" value="Motor Control"> Motor Control</label>
-                                <label><input type="checkbox" name="product_category[]" value="Air Monitor"> Air Monitor</label>
-                                <label><input type="checkbox" name="product_category[]" value="Transmitter Receiver"> Transmitter Receiver</label>
-                                <label><input type="checkbox" name="product_category[]" value="Customized Solution"> Customized Solution</label>
+                            <div class="checkbox-group" id="productCategoryGroup">
+                                <?php foreach ($productCategories as $category): ?>
+                                    <label><input type="checkbox" name="product_category[]" value="<?php echo htmlspecialchars($category); ?>"> <?php echo htmlspecialchars($category); ?></label>
+                                <?php endforeach; ?>
                             </div>
                         </div>
                     </div>
@@ -153,9 +171,10 @@ $nextCustomerId = getNextCustomerId();
                     <div class="form-row">
                         <div class="form-group">
                             <label>Customer Type:</label>
-                            <div class="radio-group">
-                                <label><input type="radio" name="customer_type" value="New Customer" checked> New Customer</label>
-                                <label><input type="radio" name="customer_type" value="Existing Customer"> Existing Customer</label>
+                            <div class="radio-group" id="customerTypeGroup">
+                                <?php foreach ($customerTypes as $index => $type): ?>
+                                    <label><input type="radio" name="customer_type" value="<?php echo htmlspecialchars($type); ?>" <?php echo $index === 0 ? 'checked' : ''; ?>> <?php echo htmlspecialchars($type); ?></label>
+                                <?php endforeach; ?>
                             </div>
                         </div>
                         
@@ -176,16 +195,9 @@ $nextCustomerId = getNextCustomerId();
                             <label for="status">Status:</label>
                             <select id="status" name="status" required>
                                 <option value="">Select Status</option>
-                                <option value="1st Email">1st Email</option>
-                                <option value="Talks going on">Talks going on</option>
-                                <option value="Quotation sent">Quotation sent</option>
-                                <option value="Demo Requested">Demo Requested</option>
-                                <option value="PO released">PO released</option>
-                                <option value="Waiting for Payment">Waiting for Payment</option>
-                                <option value="Converted">Converted</option>
-                                <option value="Rejected">Rejected</option>
-                                <option value="Follow-up soon">Follow-up soon</option>
-                                <option value="Follow-up later">Follow-up later</option>
+                                <?php foreach ($statuses as $status): ?>
+                                    <option value="<?php echo htmlspecialchars($status); ?>"><?php echo htmlspecialchars($status); ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                     </div>
@@ -202,6 +214,7 @@ $nextCustomerId = getNextCustomerId();
                         </div>
                     </div>
                     <button type="button" id="addCommentBtn" class="btn btn-secondary">Add Comment</button>
+                    <button type="button" id="saveCommentsBtn" class="btn btn-primary" style="margin-left: 10px;">Save/Update Comments</button>
                 </div>
 
                 <!-- Form Actions -->
@@ -213,10 +226,75 @@ $nextCustomerId = getNextCustomerId();
         </div>
     </div>
 
+    <!-- List All Popup Modal -->
+    <div id="listAllModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>All Customers</h2>
+                <span class="modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="table-container">
+                    <table id="customersTable" class="data-table">
+                        <thead id="tableHead"></thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import DB Modal -->
+    <div id="importDbModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Import Database</h2>
+                <span class="modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="importDbForm">
+                    <div class="form-group">
+                        <label for="dbFile">Select Database File (.db):</label>
+                        <input type="file" id="dbFile" name="db_file" accept=".db" required>
+                        <small>Maximum file size: 50MB</small>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Import</button>
+                        <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import CSV Modal -->
+    <div id="importCsvModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Import CSV</h2>
+                <span class="modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="importCsvForm">
+                    <div class="form-group">
+                        <label for="csvFile">Select CSV File:</label>
+                        <input type="file" id="csvFile" name="csv_file" accept=".csv" required>
+                        <small>Maximum file size: 50MB</small>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Import</button>
+                        <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="<?php echo BASE_PATH; ?>/assets/js/main.js"></script>
     <script>
         // Set base path for JavaScript
         const BASE_PATH = '<?php echo BASE_PATH; ?>';
+        const CUSTOMER_ID = '<?php echo htmlspecialchars($nextCustomerId); ?>';
     </script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 <?php
 /**
  * Database Connection Module
- * Handles SQLite database connections
+ * Handles libSQL (SQLite fork) database connections
  */
 
 require_once __DIR__ . '/../config.php';
@@ -18,7 +18,7 @@ class Database {
                     mkdir($dataDir, 0755, true);
                 }
                 
-                // Connect to SQLite database
+                // Connect to SQLite database (libSQL is SQLite compatible)
                 self::$connection = new PDO('sqlite:' . DB_PATH);
                 self::$connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                 self::$connection->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);

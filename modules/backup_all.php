@@ -1,7 +1,7 @@
 <?php
 /**
- * Backup Module
- * Creates backup of CRM data in CSV format
+ * Backup All Module
+ * Creates both CSV and database file backups
  */
 
 session_start();
@@ -27,9 +27,11 @@ try {
         mkdir($backupDir, 0755, true);
     }
     
-    // Generate backup filename: crm_yymmdd_hhmm.csv
+    // Generate backup filename: crm_yymmdd_hhmm
     $timestamp = date('ymd_His');
-    $backupFile = $backupDir . '/crm_' . $timestamp . '.csv';
+    
+    // 1. Create CSV backup
+    $csvFile = $backupDir . '/crm_' . $timestamp . '.csv';
     
     // Fetch all customers
     $stmt = $pdo->query("
@@ -63,14 +65,14 @@ try {
         $maxComments = max($maxComments, count($customerComments));
     }
     
-    // Open file for writing
-    $file = fopen($backupFile, 'w');
+    // Open CSV file for writing
+    $file = fopen($csvFile, 'w');
     
     if ($file === false) {
-        throw new Exception("Could not create backup file");
+        throw new Exception("Could not create CSV backup file");
     }
     
-    // Write header
+    // Write CSV header
     $header = [
         'Customer ID', 'Date', 'Time', 'Customer Name', 'Company Name',
         'Primary Contact', 'Secondary Contact', 'Email ID', 'City',
@@ -85,7 +87,7 @@ try {
     
     fputcsv($file, $header);
     
-    // Write data rows
+    // Write CSV data rows
     foreach ($customers as $customer) {
         $row = [
             $customer['customer_id'],
@@ -116,13 +118,23 @@ try {
     
     fclose($file);
     
+    // 2. Create database backup
+    $dbFile = $backupDir . '/crm_' . $timestamp . '.db';
+    
+    if (!copy(DB_PATH, $dbFile)) {
+        throw new Exception("Could not copy database file");
+    }
+    
     echo json_encode([
         'success' => true,
         'message' => 'Backup created successfully',
-        'filename' => basename($backupFile)
+        'csv_file' => basename($csvFile),
+        'db_file' => basename($dbFile)
     ]);
     
 } catch (Exception $e) {
-    error_log("Backup error: " . $e->getMessage());
+    error_log("Backup all error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Backup failed: ' . $e->getMessage()]);
 }
+
+
