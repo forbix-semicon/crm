@@ -47,7 +47,7 @@ if (!$logged_in && $current_page !== 'login') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CRM System</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=<?php echo filemtime(__DIR__ . '/css/style.css'); ?>">
 </head>
 <body>
     <?php if ($logged_in): ?>
@@ -72,7 +72,7 @@ if (!$logged_in && $current_page !== 'login') {
         <?php endif; ?>
     </div>
 
-    <script src="js/script.js"></script>
+    <script src="js/script.js?v=<?php echo filemtime(__DIR__ . '/js/script.js'); ?>"></script>
 </body>
 </html>
 

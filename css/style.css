@@ -469,26 +469,44 @@ body {
 }
 
 .list-all-table {
-    width: 100%;
-    min-width: 1400px;
-    border-collapse: collapse;
+    width: 100% !important;
+    min-width: 1400px !important;
+    border-collapse: collapse !important;
+    border-spacing: 0 !important;
     font-size: 13px;
+    display: table !important;
+    table-layout: auto !important;
 }
 
 .list-all-table thead {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: #667eea;
-    color: white;
+    display: table-header-group !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+    background: #667eea !important;
+    color: white !important;
+}
+
+.list-all-table tbody {
+    display: table-row-group !important;
+}
+
+.list-all-table tr {
+    display: table-row !important;
+}
+
+.list-all-table th,
+.list-all-table td {
+    display: table-cell !important;
 }
 
 .list-all-table th {
-    padding: 10px 8px;
-    text-align: left;
-    font-weight: 600;
-    white-space: nowrap;
-    border-right: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 10px 8px !important;
+    text-align: left !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
+    display: table-cell !important;
 }
 
 .list-all-table th:last-child {
@@ -496,11 +514,12 @@ body {
 }
 
 .list-all-table td {
-    padding: 8px;
-    border-bottom: 1px solid #ddd;
-    border-right: 1px solid #eee;
-    vertical-align: top;
-    background: white;
+    padding: 8px !important;
+    border-bottom: 1px solid #ddd !important;
+    border-right: 1px solid #eee !important;
+    vertical-align: middle !important;
+    background: white !important;
+    display: table-cell !important;
 }
 
 .list-all-table tbody tr:hover {
@@ -520,6 +539,11 @@ body {
     font-weight: 500;
     display: block;
     padding: 4px;
+    width: 100%;
+    box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .list-all-table .editable-field {
@@ -555,6 +579,24 @@ body {
     position: relative;
     min-width: 100px;
     max-width: 300px;
+}
+
+.list-all-table th:nth-child(1),
+.list-all-table td:nth-child(1) {
+    min-width: 120px;
+    max-width: 150px;
+}
+
+.list-all-table th:nth-child(2),
+.list-all-table td:nth-child(2) {
+    min-width: 110px;
+    max-width: 130px;
+}
+
+.list-all-table th:nth-child(3),
+.list-all-table td:nth-child(3) {
+    min-width: 80px;
+    max-width: 100px;
 }
 
 /* Responsive */

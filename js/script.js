@@ -354,10 +354,10 @@ function displayAllCustomers(customers) {
     }
     
     // Show summary
-    let html = '<div style="margin-bottom: 15px; padding: 10px; background: #e7f3ff; border-radius: 5px; border-left: 4px solid #667eea;">';
-    html += '<strong>Total Customers: ' + customers.length + '</strong> | ';
-    html += 'Click on any cell to edit. Changes save automatically when you click outside the field.';
-    html += '</div>';
+    let summaryHtml = '<div style="margin-bottom: 15px; padding: 10px; background: #e7f3ff; border-radius: 5px; border-left: 4px solid #667eea;">';
+    summaryHtml += '<strong>Total Customers: ' + customers.length + '</strong> | ';
+    summaryHtml += 'Click on any cell to edit. Changes save automatically when you click outside the field.';
+    summaryHtml += '</div>';
     
     // Define column headers with better labels
     const columns = [
@@ -379,44 +379,97 @@ function displayAllCustomers(customers) {
         { key: 'comments', label: 'Comments', editable: true, type: 'textarea' }
     ];
     
-    let html = '<div class="table-container-list-all">';
-    html += '<table class="data-table list-all-table" id="listAllTable">';
-    html += '<thead><tr>';
+    // Build table HTML
+    let tableHtml = '<div class="table-container-list-all">';
+    tableHtml += '<table class="data-table list-all-table" id="listAllTable">';
+    tableHtml += '<thead>';
+    tableHtml += '<tr>';
     
     columns.forEach(col => {
-        html += '<th>' + col.label + '</th>';
+        tableHtml += '<th>' + escapeHtml(col.label) + '</th>';
     });
     
-    html += '</tr></thead><tbody>';
+    tableHtml += '</tr>';
+    tableHtml += '</thead>';
+    tableHtml += '<tbody>';
     
     customers.forEach(customer => {
-        html += '<tr>';
+        tableHtml += '<tr>';
         columns.forEach(col => {
-            const value = customer[col.key] || '';
+            let value = customer[col.key] || '';
             const customerId = customer.customer_id || '';
             
-            html += '<td class="editable-cell" data-customer-id="' + escapeHtml(customerId) + '" data-field="' + col.key + '">';
-            
-            if (col.type === 'textarea') {
-                html += '<textarea class="editable-field" rows="2">' + escapeHtml(value) + '</textarea>';
-            } else if (!col.editable) {
-                html += '<span class="non-editable-field">' + escapeHtml(value) + '</span>';
-            } else {
-                html += '<input type="text" class="editable-field" value="' + escapeHtml(value) + '">';
+            // Format date and time for display
+            if (col.key === 'date' && value) {
+                // Format date as YYYY-MM-DD if it's in a different format
+                if (value.includes(' ')) {
+                    value = value.split(' ')[0];
+                }
+            }
+            if (col.key === 'time' && value) {
+                // Format time as HH:MM if it's in a different format
+                if (value.includes(' ')) {
+                    value = value.split(' ')[1] || value;
+                }
+                // Remove seconds if present
+                if (value.includes(':') && value.split(':').length > 2) {
+                    const parts = value.split(':');
+                    value = parts[0] + ':' + parts[1];
+                }
             }
             
-            html += '</td>';
+            tableHtml += '<td class="editable-cell" data-customer-id="' + escapeHtml(customerId) + '" data-field="' + escapeHtml(col.key) + '">';
+            
+            if (col.type === 'textarea') {
+                tableHtml += '<textarea class="editable-field" rows="2">' + escapeHtml(value) + '</textarea>';
+            } else if (!col.editable) {
+                tableHtml += '<span class="non-editable-field">' + escapeHtml(value) + '</span>';
+            } else {
+                tableHtml += '<input type="text" class="editable-field" value="' + escapeHtml(value) + '">';
+            }
+            
+            tableHtml += '</td>';
         });
-        html += '</tr>';
+        tableHtml += '</tr>';
     });
     
-    html += '</tbody></table></div>';
-    container.innerHTML = html;
+    tableHtml += '</tbody>';
+    tableHtml += '</table>';
+    tableHtml += '</div>';
     
-    // Add scroll position indicator
+    container.innerHTML = summaryHtml + tableHtml;
+    
+    // Add scroll position indicator and force table display properties
     const table = document.getElementById('listAllTable');
     if (table) {
         table.parentElement.scrollTop = 0;
+        
+        // Force table display properties as inline styles (fallback for production server)
+        table.style.display = 'table';
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        table.style.tableLayout = 'auto';
+        
+        // Force thead, tbody, tr, th, td display properties
+        const thead = table.querySelector('thead');
+        if (thead) {
+            thead.style.display = 'table-header-group';
+        }
+        
+        const tbody = table.querySelector('tbody');
+        if (tbody) {
+            tbody.style.display = 'table-row-group';
+        }
+        
+        const rows = table.querySelectorAll('tr');
+        rows.forEach(row => {
+            row.style.display = 'table-row';
+        });
+        
+        const cells = table.querySelectorAll('th, td');
+        cells.forEach(cell => {
+            cell.style.display = 'table-cell';
+        });
     }
     
     // Setup editable cell handlers
