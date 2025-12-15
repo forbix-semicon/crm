@@ -189,18 +189,10 @@ function handleCustomerSubmit(e) {
     
     // Convert FormData to object
     for (let [key, value] of formData.entries()) {
-        if (key === 'product_category[]') {
-            if (!data.product_category) data.product_category = [];
-            data.product_category.push(value);
-        } else {
-            data[key] = value;
-        }
+        data[key] = value;
     }
     
-    // Convert product_category array to comma-separated string
-    if (data.product_category) {
-        data.product_category = data.product_category.join(', ');
-    }
+    // Product category already single select
     
     // Validate email
     if (data.email_id) {
@@ -723,27 +715,32 @@ function displayAllCustomers(customers) {
     // Show summary
     let summaryHtml = '<div style="margin-bottom: 15px; padding: 10px; background: #e7f3ff; border-radius: 5px; border-left: 4px solid #667eea;">';
     summaryHtml += '<strong>Total Customers: ' + customers.length + '</strong> | ';
-    summaryHtml += 'Click on any cell to edit. Changes save automatically when you click outside the field.';
+    summaryHtml += 'Click on any cell to edit. Changes save automatically when you click outside the field. Scroll horizontally if fields are hidden.';
     summaryHtml += '</div>';
     
-    // Define column headers with better labels
+    // Allowed values for dropdowns
+    const allowedProductCategories = Array.isArray(window.allowedProductCategories) ? window.allowedProductCategories : [];
+    const allowedCustomerTypes = Array.isArray(window.allowedCustomerTypes) ? window.allowedCustomerTypes : [];
+    const allowedStatuses = Array.isArray(window.allowedStatuses) ? window.allowedStatuses : [];
+    const allowedSources = Array.isArray(window.allowedSources) ? window.allowedSources : [];
+
+    // Define column headers with required order
     const columns = [
-        { key: 'customer_id', label: 'Customer ID', editable: false, type: 'text' },
-        { key: 'date', label: 'Date', editable: false, type: 'date' },
-        { key: 'time', label: 'Time', editable: false, type: 'time' },
-        { key: 'customer_name', label: 'Customer Name', editable: true, type: 'textarea' },
+        { key: 'customer_id', label: 'Cust ID', editable: false, type: 'text' },
+        { key: 'customer_name', label: 'Cust Name', editable: true, type: 'textarea' },
         { key: 'company_name', label: 'Company Name', editable: true, type: 'textarea' },
-        { key: 'primary_contact', label: 'Primary Contact', editable: true, type: 'text' },
-        { key: 'secondary_contact', label: 'Secondary Contact', editable: true, type: 'text' },
-        { key: 'email_id', label: 'Email ID', editable: true, type: 'textarea' },
-        { key: 'city', label: 'City', editable: true, type: 'text' },
-        { key: 'product_category', label: 'Product Category', editable: true, type: 'text' },
+        { key: 'status', label: 'Status', editable: true, type: 'select', options: allowedStatuses },
         { key: 'requirement', label: 'Requirement', editable: true, type: 'textarea' },
-        { key: 'source', label: 'Source', editable: true, type: 'text' },
+        { key: 'comments', label: 'Comments', editable: true, type: 'textarea', callout: true },
+        { key: 'primary_contact', label: 'Primary Contact', editable: true, type: 'text' },
+        { key: 'email_id', label: 'Email ID', editable: true, type: 'textarea' },
+        { key: 'product_category', label: 'Product Category', editable: true, type: 'select', options: allowedProductCategories },
+        { key: 'customer_type', label: 'Customer Type', editable: true, type: 'select', options: allowedCustomerTypes },
+        { key: 'source', label: 'Source', editable: true, type: 'select', options: allowedSources },
         { key: 'assigned_to', label: 'Assigned To', editable: true, type: 'text' },
-        { key: 'customer_type', label: 'Customer Type', editable: true, type: 'text' },
-        { key: 'status', label: 'Status', editable: true, type: 'text' },
-        { key: 'comments', label: 'Comments', editable: true, type: 'textarea' }
+        { key: 'city', label: 'City', editable: true, type: 'text' },
+        { key: 'date', label: 'Date', editable: false, type: 'date' },
+        { key: 'time', label: 'Time', editable: false, type: 'time' }
     ];
     
     // Build table HTML
@@ -765,6 +762,7 @@ function displayAllCustomers(customers) {
         columns.forEach(col => {
             let value = customer[col.key] || '';
             const customerId = customer.customer_id || '';
+            const dateInfo = (customer.date || '') + (customer.time ? ' ' + customer.time : '');
             
             // Format date and time for display
             if (col.key === 'date' && value) {
@@ -788,11 +786,31 @@ function displayAllCustomers(customers) {
             tableHtml += '<td class="editable-cell" data-customer-id="' + escapeHtml(customerId) + '" data-field="' + escapeHtml(col.key) + '">';
             
             if (col.type === 'textarea') {
-                tableHtml += '<textarea class="editable-field" rows="2">' + escapeHtml(value) + '</textarea>';
+                const extraClass = col.key === 'comments' ? ' wide-cell' : (col.key === 'requirement' ? ' wide-cell' : '');
+                tableHtml += '<textarea class="editable-field' + extraClass + '" rows="2">' + escapeHtml(value) + '</textarea>';
+            } else if (col.type === 'select') {
+                tableHtml += '<select class="editable-field">';
+                tableHtml += '<option value="">Select</option>';
+                (col.options || []).forEach(opt => {
+                    const selected = value === opt ? ' selected' : '';
+                    tableHtml += '<option value="' + escapeHtml(opt) + '"' + selected + '>' + escapeHtml(opt) + '</option>';
+                });
+                tableHtml += '</select>';
             } else if (!col.editable) {
                 tableHtml += '<span class="non-editable-field">' + escapeHtml(value) + '</span>';
             } else {
                 tableHtml += '<input type="text" class="editable-field" value="' + escapeHtml(value) + '">';
+            }
+
+            if (col.callout) {
+                const latestComments = (customer.comments || '').trim() || 'No comments yet.';
+                const commentsEscaped = escapeHtml(latestComments).replace(/\n/g, '<br>');
+                tableHtml += '<span class="callout-dot" title="View latest comments"></span>';
+                tableHtml += '<div class="callout-bubble">';
+                tableHtml += '<div class="callout-title">Latest Comments</div>';
+                tableHtml += '<div class="callout-meta">' + escapeHtml(dateInfo || 'No timestamp') + '</div>';
+                tableHtml += '<div>' + commentsEscaped + '</div>';
+                tableHtml += '</div>';
             }
             
             tableHtml += '</td>';
@@ -855,34 +873,73 @@ function setupEditableCells() {
         }
         
         const input = cell.querySelector('.editable-field');
+        const callout = cell.querySelector('.callout-bubble');
+        const showCallout = () => {
+            if (callout) {
+                cell.classList.add('show-callout');
+            }
+        };
+        const hideCallout = () => {
+            if (callout) {
+                cell.classList.remove('show-callout');
+            }
+        };
         if (input) {
-            // Save on blur (when user clicks away)
-            input.addEventListener('blur', function() {
-                const value = this.value.trim();
+            const tagName = input.tagName.toUpperCase();
+            const saveHandler = () => {
+                const value = getInputValueForSave(input);
                 if (customerId && field) {
                     saveCellValue(customerId, field, value);
                 }
-            });
-            
-            // Save on Enter key (for text inputs only, not textareas)
-            input.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter' && this.tagName !== 'TEXTAREA') {
-                    e.preventDefault();
-                    this.blur();
-                }
-            });
-            
-            // For textareas, add Ctrl+Enter to save
-            if (input.tagName === 'TEXTAREA') {
-                input.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter' && e.ctrlKey) {
+            };
+
+            if (tagName === 'SELECT') {
+                input.addEventListener('change', saveHandler);
+                input.addEventListener('focus', showCallout);
+                input.addEventListener('blur', hideCallout);
+            } else {
+                // Save on blur (when user clicks away)
+                input.addEventListener('blur', function() {
+                    saveHandler();
+                    hideCallout();
+                });
+                
+                // Save on Enter key (for text inputs only, not textareas)
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter' && tagName !== 'TEXTAREA') {
                         e.preventDefault();
                         this.blur();
                     }
                 });
+                
+                // For textareas, add Ctrl+Enter to save
+                if (tagName === 'TEXTAREA') {
+                    input.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter' && e.ctrlKey) {
+                            e.preventDefault();
+                            this.blur();
+                        }
+                    });
+                }
+                input.addEventListener('focus', showCallout);
+            }
+            cell.addEventListener('mouseleave', hideCallout);
+            const dot = cell.querySelector('.callout-dot');
+            if (dot) {
+                dot.addEventListener('mouseenter', showCallout);
+                dot.addEventListener('mouseleave', hideCallout);
             }
         }
     });
+}
+
+function getInputValueForSave(input) {
+    const tagName = input.tagName.toUpperCase();
+    if (tagName === 'SELECT' && input.multiple) {
+        const values = Array.from(input.selectedOptions).map(o => o.value.trim()).filter(Boolean);
+        return values.join(', ');
+    }
+    return input.value.trim();
 }
 
 function saveCellValue(customerId, field, value) {
@@ -975,7 +1032,6 @@ function loadCustomerData(customerId) {
                 if (document.getElementById('customer_name')) document.getElementById('customer_name').value = customer.customer_name || '';
                 if (document.getElementById('company_name')) document.getElementById('company_name').value = customer.company_name || '';
                 if (document.getElementById('primary_contact')) document.getElementById('primary_contact').value = customer.primary_contact || '';
-                if (document.getElementById('secondary_contact')) document.getElementById('secondary_contact').value = customer.secondary_contact || '';
                 if (document.getElementById('email_id')) document.getElementById('email_id').value = customer.email_id || '';
                 if (document.getElementById('city')) document.getElementById('city').value = customer.city || '';
                 if (document.getElementById('requirement')) document.getElementById('requirement').value = customer.requirement || '';
@@ -985,11 +1041,8 @@ function loadCustomerData(customerId) {
                 if (document.getElementById('comments')) document.getElementById('comments').value = customer.comments || '';
                 
                 // Handle product categories (checkboxes)
-                if (customer.product_category) {
-                    const categories = customer.product_category.split(',').map(c => c.trim());
-                    document.querySelectorAll('input[name="product_category[]"]').forEach(checkbox => {
-                        checkbox.checked = categories.includes(checkbox.value);
-                    });
+                if (customer.product_category && document.getElementById('product_category_single')) {
+                    document.getElementById('product_category_single').value = customer.product_category;
                 }
                 
                 // Handle customer type (radio buttons)

@@ -4,10 +4,25 @@ $sources = getAllSources($pdo);
 $statuses = getAllStatuses($pdo);
 $customerTypes = getAllCustomerTypes($pdo);
 $productCategories = getAllProductCategories($pdo);
+
+$allowedProductCategories = array_values(array_map(function ($c) { return $c['name']; }, $productCategories));
+$allowedCustomerTypes = array_values(array_map(function ($c) { return $c['name']; }, $customerTypes));
+$allowedStatuses = array_values(array_map(function ($s) { return $s['name']; }, $statuses));
+$allowedSources = array_values(array_map(function ($s) { return $s['name']; }, $sources));
 ?>
+<script>
+    // Expose allowed values for dropdowns in List/Modify popup
+    window.allowedProductCategories = <?php echo json_encode($allowedProductCategories); ?>;
+    window.allowedCustomerTypes = <?php echo json_encode($allowedCustomerTypes); ?>;
+    window.allowedStatuses = <?php echo json_encode($allowedStatuses); ?>;
+    window.allowedSources = <?php echo json_encode($allowedSources); ?>;
+</script>
 <div class="agent-dashboard">
     <div class="form-section">
-        <h2>Customer Entry Form</h2>
+        <div class="form-header">
+            <h2>Customer Entry Form</h2>
+            <button type="button" id="listAllBtn" class="btn-accent">List / Modify All</button>
+        </div>
         <form id="customerForm">
             <div class="form-row">
                 <div class="form-group">
@@ -41,12 +56,8 @@ $productCategories = getAllProductCategories($pdo);
 
             <div class="form-row">
                 <div class="form-group">
-                    <label for="primary_contact">Primary Contact:</label>
-                    <input type="text" id="primary_contact" name="primary_contact">
-                </div>
-                <div class="form-group">
-                    <label for="secondary_contact">Secondary Contact:</label>
-                    <input type="text" id="secondary_contact" name="secondary_contact">
+                    <label for="primary_contact">Primary Contact (multiple numbers allowed):</label>
+                    <input type="text" id="primary_contact" name="primary_contact" placeholder="Add multiple numbers separated by comma or new line">
                 </div>
                 <div class="form-group">
                     <label for="city">City:</label>
@@ -61,15 +72,13 @@ $productCategories = getAllProductCategories($pdo);
             </div>
 
             <div class="form-group">
-                <label>Product Category (Multiple Selection):</label>
-                <div class="checkbox-group" id="product_category_group">
+                <label for="product_category_single">Product Category (Single Selection):</label>
+                <select id="product_category_single" name="product_category">
+                    <option value="">Select Category</option>
                     <?php foreach ($productCategories as $cat): ?>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="product_category[]" value="<?php echo htmlspecialchars($cat['name']); ?>">
-                            <?php echo htmlspecialchars($cat['name']); ?>
-                        </label>
+                        <option value="<?php echo htmlspecialchars($cat['name']); ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
                     <?php endforeach; ?>
-                </div>
+                </select>
             </div>
 
             <div class="form-group">
@@ -127,7 +136,6 @@ $productCategories = getAllProductCategories($pdo);
                 <button type="button" id="shortReportBtn" class="btn-secondary">Short Report</button>
                 <button type="button" id="expandedReportBtn" class="btn-secondary">Expanded Report</button>
                 <button type="button" id="backupBtn" class="btn-secondary">Backup</button>
-                <button type="button" id="listAllBtn" class="btn-secondary">List/Modify All</button>
                 <button type="button" id="showDatabasesBtn" class="btn-secondary">Show Databases</button>
                 <button type="button" id="exportExcelBtn" class="btn-secondary">Export as Excel</button>
                 <button type="button" id="importExcelBtn" class="btn-secondary">Import from Excel</button>
@@ -160,7 +168,7 @@ $productCategories = getAllProductCategories($pdo);
             <h2>All Customers - Database View</h2>
             <span class="close">&times;</span>
         </div>
-        <div class="modal-body" style="padding: 20px;">
+        <div class="modal-body list-all-body" style="padding: 20px;">
             <div id="listAllContent"></div>
         </div>
         <div class="modal-footer">
