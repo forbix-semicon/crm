@@ -4,6 +4,7 @@ $users = getAllUsers($pdo);
 $productCategories = getAllProductCategories($pdo);
 $customerTypes = getAllCustomerTypes($pdo);
 $statuses = getAllStatuses($pdo);
+$sources = getAllSources($pdo);
 ?>
 <div class="admin-dashboard">
     <h2>Admin Dashboard</h2>
@@ -12,7 +13,9 @@ $statuses = getAllStatuses($pdo);
         <button class="tab-btn active" onclick="switchTab('users')">Users</button>
         <button class="tab-btn" onclick="switchTab('product-categories')">Product Categories</button>
         <button class="tab-btn" onclick="switchTab('customer-types')">Customer Types</button>
-        <button class="tab-btn" onclick="switchTab('statuses')">Statuses</button>
+        <button class="tab-btn" onclick="switchTab('inquiry-sources')">Inquiry Source</button>
+        <button class="tab-btn" onclick="switchTab('statuses')">Status</button>
+        <button class="tab-btn" onclick="switchTab('database')">Database</button>
     </div>
 
     <!-- Users Tab -->
@@ -42,7 +45,7 @@ $statuses = getAllStatuses($pdo);
                         <th>ID</th>
                         <th>Username</th>
                         <th>Role</th>
-                        <th>Created At</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="usersTableBody">
@@ -51,7 +54,13 @@ $statuses = getAllStatuses($pdo);
                             <td><?php echo $user['id']; ?></td>
                             <td><?php echo htmlspecialchars($user['username']); ?></td>
                             <td><?php echo htmlspecialchars($user['role']); ?></td>
-                            <td><?php echo htmlspecialchars($user['created_at']); ?></td>
+                            <td>
+                                <?php if (strtolower($user['username']) !== 'admin'): ?>
+                                    <button type="button" class="btn-delete" onclick="deleteUser(<?php echo $user['id']; ?>, '<?php echo htmlspecialchars($user['username'], ENT_QUOTES); ?>')">Delete</button>
+                                <?php else: ?>
+                                    <span style="color: #999; font-style: italic;">Protected</span>
+                                <?php endif; ?>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -79,20 +88,16 @@ $statuses = getAllStatuses($pdo);
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>Name</th>
-                        <th>Created At</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="productCategoriesTableBody">
                     <?php foreach ($productCategories as $cat): ?>
                         <tr>
-                            <td><?php echo $cat['id']; ?></td>
                             <td><?php echo htmlspecialchars($cat['name']); ?></td>
-                            <td><?php echo htmlspecialchars($cat['created_at']); ?></td>
                             <td>
-                                <button type="button" class="btn-delete" onclick="deleteProductCategory(<?php echo $cat['id']; ?>)">Delete</button>
+                                <button type="button" class="btn-delete" data-id="<?php echo $cat['id']; ?>" data-name="<?php echo htmlspecialchars($cat['name'], ENT_QUOTES); ?>" onclick="deleteProductCategoryById(<?php echo $cat['id']; ?>, '<?php echo htmlspecialchars($cat['name'], ENT_QUOTES); ?>')">Delete</button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -121,20 +126,16 @@ $statuses = getAllStatuses($pdo);
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>Name</th>
-                        <th>Created At</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="customerTypesTableBody">
                     <?php foreach ($customerTypes as $type): ?>
                         <tr>
-                            <td><?php echo $type['id']; ?></td>
                             <td><?php echo htmlspecialchars($type['name']); ?></td>
-                            <td><?php echo htmlspecialchars($type['created_at']); ?></td>
                             <td>
-                                <button type="button" class="btn-delete" onclick="deleteCustomerType(<?php echo $type['id']; ?>)">Delete</button>
+                                <button type="button" class="btn-delete" data-id="<?php echo $type['id']; ?>" data-name="<?php echo htmlspecialchars($type['name'], ENT_QUOTES); ?>" onclick="deleteCustomerTypeById(<?php echo $type['id']; ?>, '<?php echo htmlspecialchars($type['name'], ENT_QUOTES); ?>')">Delete</button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -143,7 +144,45 @@ $statuses = getAllStatuses($pdo);
         </div>
     </div>
 
-    <!-- Statuses Tab -->
+    <!-- Inquiry Sources Tab -->
+    <div id="inquiry-sources-tab" class="tab-content">
+        <h3>Add Inquiry Source</h3>
+        <form id="addSourceForm" class="admin-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="source_name">Source Name:</label>
+                    <input type="text" id="source_name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn-primary">Add Source</button>
+                </div>
+            </div>
+        </form>
+
+        <h3>Existing Inquiry Sources</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="sourcesTableBody">
+                    <?php foreach ($sources as $source): ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($source['name']); ?></td>
+                            <td>
+                                <button type="button" class="btn-delete" data-id="<?php echo $source['id']; ?>" data-name="<?php echo htmlspecialchars($source['name'], ENT_QUOTES); ?>" onclick="deleteSourceById(<?php echo $source['id']; ?>, '<?php echo htmlspecialchars($source['name'], ENT_QUOTES); ?>')">Delete</button>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Status Tab -->
     <div id="statuses-tab" class="tab-content">
         <h3>Add Status</h3>
         <form id="addStatusForm" class="admin-form">
@@ -158,30 +197,61 @@ $statuses = getAllStatuses($pdo);
             </div>
         </form>
 
-        <h3>Existing Statuses</h3>
+        <h3>Existing Status</h3>
         <div class="table-container">
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>Name</th>
-                        <th>Created At</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="statusesTableBody">
                     <?php foreach ($statuses as $status): ?>
                         <tr>
-                            <td><?php echo $status['id']; ?></td>
                             <td><?php echo htmlspecialchars($status['name']); ?></td>
-                            <td><?php echo htmlspecialchars($status['created_at']); ?></td>
                             <td>
-                                <button type="button" class="btn-delete" onclick="deleteStatus(<?php echo $status['id']; ?>)">Delete</button>
+                                <button type="button" class="btn-delete" data-id="<?php echo $status['id']; ?>" data-name="<?php echo htmlspecialchars($status['name'], ENT_QUOTES); ?>" onclick="deleteStatusById(<?php echo $status['id']; ?>, '<?php echo htmlspecialchars($status['name'], ENT_QUOTES); ?>')">Delete</button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Database Tab -->
+    <div id="database-tab" class="tab-content">
+        <h3>Database Management</h3>
+        
+        <div class="admin-form" style="background: #fff3cd; border-left: 4px solid #ffc107;">
+            <h4 style="margin-top: 0; color: #856404;">⚠️ Warning: Dangerous Operations</h4>
+            <p style="color: #856404; margin-bottom: 15px;">
+                The operations below will permanently delete data from the database. 
+                Make sure you have a backup before proceeding.
+            </p>
+        </div>
+
+        <div class="admin-form">
+            <h4>Clear Customer Data</h4>
+            <p style="color: #666; margin-bottom: 15px;">
+                This will delete all customer records from the database (crm.db). 
+                Configuration data (users, categories, types, status) will remain intact.
+            </p>
+            <div class="form-row">
+                <div class="form-group">
+                    <button type="button" class="btn-delete" onclick="clearDatabase()" style="padding: 12px 24px; font-size: 16px;">
+                        Clear All Customer Data
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-form" style="margin-top: 20px;">
+            <h4>Database Statistics</h4>
+            <div id="databaseStats" style="padding: 15px; background: #f8f9fa; border-radius: 5px;">
+                <p style="color: #666;">Loading statistics...</p>
+            </div>
         </div>
     </div>
 </div>

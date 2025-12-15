@@ -101,6 +101,30 @@ function setupEventListeners() {
         listAllBtn.addEventListener('click', showListAll);
     }
     
+    // Show Databases button
+    const showDatabasesBtn = document.getElementById('showDatabasesBtn');
+    if (showDatabasesBtn) {
+        showDatabasesBtn.addEventListener('click', showDatabases);
+    }
+    
+    // Export Excel button
+    const exportExcelBtn = document.getElementById('exportExcelBtn');
+    if (exportExcelBtn) {
+        exportExcelBtn.addEventListener('click', exportToExcel);
+    }
+    
+    // Import Excel button
+    const importExcelBtn = document.getElementById('importExcelBtn');
+    if (importExcelBtn) {
+        importExcelBtn.addEventListener('click', showImportExcel);
+    }
+    
+    // Import DB button
+    const importDbBtn = document.getElementById('importDbBtn');
+    if (importDbBtn) {
+        importDbBtn.addEventListener('click', showImportDb);
+    }
+    
     // Search button
     const searchBtn = document.getElementById('searchBtn');
     if (searchBtn) {
@@ -126,6 +150,11 @@ function setupEventListeners() {
     const addStatusForm = document.getElementById('addStatusForm');
     if (addStatusForm) {
         addStatusForm.addEventListener('submit', handleAddStatus);
+    }
+    
+    const addSourceForm = document.getElementById('addSourceForm');
+    if (addSourceForm) {
+        addSourceForm.addEventListener('submit', handleAddSource);
     }
     
     // Modal close handlers
@@ -342,6 +371,344 @@ function showListAll() {
         .catch(error => {
             console.error('Error:', error);
             showMessage('Error', 'An error occurred while fetching customers');
+        });
+}
+
+function showDatabases() {
+    fetch('api.php?action=list_backup_files')
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                displayBackupFiles(result.data);
+                document.getElementById('showDatabasesModal').style.display = 'block';
+            } else {
+                showMessage('Error', result.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('Error', 'An error occurred while fetching backup files');
+        });
+}
+
+function displayBackupFiles(files) {
+    const container = document.getElementById('databasesContent');
+    
+    if (files.length === 0) {
+        container.innerHTML = '<p style="text-align: center; padding: 20px;">No backup files found.</p>';
+        return;
+    }
+    
+    let html = '<div style="margin-bottom: 15px; padding: 10px; background: #e7f3ff; border-radius: 5px; border-left: 4px solid #667eea;">';
+    html += '<strong>Total Files: ' + files.length + '</strong>';
+    html += '</div>';
+    
+    html += '<table class="data-table" style="width: 100%; border-collapse: collapse;">';
+    html += '<thead><tr>';
+    html += '<th style="padding: 10px; text-align: left; background: #667eea; color: white;">Filename</th>';
+    html += '<th style="padding: 10px; text-align: left; background: #667eea; color: white;">Type</th>';
+    html += '<th style="padding: 10px; text-align: left; background: #667eea; color: white;">Size</th>';
+    html += '<th style="padding: 10px; text-align: left; background: #667eea; color: white;">Modified</th>';
+    html += '</tr></thead><tbody>';
+    
+    files.forEach(file => {
+        const sizeKB = (file.size / 1024).toFixed(2);
+        html += '<tr>';
+        html += '<td style="padding: 8px; border-bottom: 1px solid #ddd;">' + escapeHtml(file.filename) + '</td>';
+        html += '<td style="padding: 8px; border-bottom: 1px solid #ddd;">' + escapeHtml(file.type.toUpperCase()) + '</td>';
+        html += '<td style="padding: 8px; border-bottom: 1px solid #ddd;">' + sizeKB + ' KB</td>';
+        html += '<td style="padding: 8px; border-bottom: 1px solid #ddd;">' + escapeHtml(file.modified) + '</td>';
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function exportToExcel() {
+    if (!confirm('Export all customers to Excel file?')) {
+        return;
+    }
+    
+    fetch('api.php?action=export_excel', {
+        method: 'POST'
+    })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                showMessage('Success', 'Excel file exported successfully: ' + result.filename);
+                // Refresh backup files list if modal is open
+                const modal = document.getElementById('showDatabasesModal');
+                if (modal && modal.style.display === 'block') {
+                    showDatabases();
+                }
+            } else {
+                showMessage('Error', result.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('Error', 'An error occurred while exporting Excel file');
+        });
+}
+
+function showImportExcel() {
+    fetch('api.php?action=list_backup_files')
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                const excelFiles = result.data.filter(f => f.type === 'excel' || f.type === 'csv');
+                displayImportExcelFiles(excelFiles);
+                document.getElementById('importExcelModal').style.display = 'block';
+            } else {
+                showMessage('Error', result.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('Error', 'An error occurred while fetching Excel files');
+        });
+}
+
+function displayImportExcelFiles(files) {
+    const container = document.getElementById('excelFilesList');
+    
+    if (files.length === 0) {
+        container.innerHTML = '<p style="text-align: center; padding: 20px; color: #666;">No Excel or CSV files found in backup directory.</p>';
+        return;
+    }
+    
+    let html = '<div style="max-height: 400px; overflow-y: auto;">';
+    files.forEach(file => {
+        const sizeKB = (file.size / 1024).toFixed(2);
+        const fileTypeLabel = file.type === 'csv' ? 'CSV' : 'Excel';
+        html += '<div style="padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9;">';
+        html += '<div style="display: flex; justify-content: space-between; align-items: center;">';
+        html += '<div>';
+        html += '<strong>' + escapeHtml(file.filename) + '</strong> <span style="color: #667eea; font-size: 0.9em;">(' + fileTypeLabel + ')</span><br>';
+        html += '<small style="color: #666;">Size: ' + sizeKB + ' KB | Modified: ' + escapeHtml(file.modified) + '</small>';
+        html += '</div>';
+        html += '<button type="button" class="btn-primary" onclick="importExcelFile(\'' + escapeHtml(file.filename) + '\')" style="margin-left: 10px;">Import</button>';
+        html += '</div>';
+        html += '</div>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function importExcelFile(filename) {
+    // First validate the Excel file
+    validateExcelFile(filename);
+}
+
+function validateExcelFile(filename) {
+    // Show loading
+    const validationContent = document.getElementById('validationContent');
+    validationContent.innerHTML = '<p style="text-align: center; padding: 20px;">Validating Excel file... Please wait.</p>';
+    document.getElementById('excelValidationModal').style.display = 'block';
+    document.getElementById('confirmImportBtn').style.display = 'none';
+    
+    // Validate the file
+    fetch('api.php?action=validate_excel&filename=' + encodeURIComponent(filename))
+        .then(response => response.json())
+        .then(result => {
+            displayValidationResult(result, filename);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            validationContent.innerHTML = '<div style="padding: 20px; background: #f8d7da; color: #721c24; border-radius: 5px;">' +
+                '<strong>Error:</strong> Failed to validate Excel file. ' + error.message +
+                '</div>';
+        });
+}
+
+function displayValidationResult(result, filename) {
+    const validationContent = document.getElementById('validationContent');
+    const validationTitle = document.getElementById('validationTitle');
+    const confirmBtn = document.getElementById('confirmImportBtn');
+    
+    let html = '';
+    
+    if (result.valid) {
+        validationTitle.textContent = '✓ Excel File is OK to Import';
+        html += '<div style="padding: 15px; background: #d4edda; color: #155724; border-radius: 5px; margin-bottom: 15px;">';
+        html += '<strong>✓ File is valid and ready to import!</strong>';
+        html += '</div>';
+    } else {
+        validationTitle.textContent = '✗ Excel File has ERRORS';
+        html += '<div style="padding: 15px; background: #f8d7da; color: #721c24; border-radius: 5px; margin-bottom: 15px;">';
+        html += '<strong>✗ File has errors and cannot be imported!</strong>';
+        html += '</div>';
+    }
+    
+    // Statistics
+    html += '<div style="margin-bottom: 15px;">';
+    html += '<strong>File Statistics:</strong><br>';
+    html += 'Total Rows: ' + (result.totalRows || 0) + '<br>';
+    html += 'Valid Rows: ' + (result.validRows || 0) + '<br>';
+    if (result.needsAutoCID > 0) {
+        html += 'Rows needing Auto CID: ' + result.needsAutoCID + '<br>';
+    }
+    html += '</div>';
+    
+    // Preview
+    if (result.preview && result.preview.length > 0) {
+        html += '<div style="margin-bottom: 15px;">';
+        html += '<strong>Preview (first 5 rows):</strong><br>';
+        html += '<table style="width: 100%; border-collapse: collapse; margin-top: 10px;">';
+        html += '<thead><tr style="background: #667eea; color: white;"><th style="padding: 8px; text-align: left;">Row</th><th style="padding: 8px; text-align: left;">Customer ID</th><th style="padding: 8px; text-align: left;">Customer Name</th><th style="padding: 8px; text-align: left;">Company</th></tr></thead>';
+        html += '<tbody>';
+        result.preview.forEach(item => {
+            html += '<tr style="border-bottom: 1px solid #ddd;">';
+            html += '<td style="padding: 8px;">' + item.row + '</td>';
+            html += '<td style="padding: 8px;">' + escapeHtml(item.customer_id) + '</td>';
+            html += '<td style="padding: 8px;">' + escapeHtml(item.customer_name) + '</td>';
+            html += '<td style="padding: 8px;">' + escapeHtml(item.company_name) + '</td>';
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        html += '</div>';
+    }
+    
+    // Errors
+    if (result.errors && result.errors.length > 0) {
+        html += '<div style="margin-bottom: 15px;">';
+        html += '<strong style="color: #721c24;">Errors (' + result.errors.length + '):</strong><br>';
+        html += '<div style="max-height: 200px; overflow-y: auto; background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px;">';
+        result.errors.forEach(error => {
+            html += '<div style="padding: 5px; color: #721c24;">• ' + escapeHtml(error) + '</div>';
+        });
+        html += '</div>';
+        html += '</div>';
+    }
+    
+    // Warnings
+    if (result.warnings && result.warnings.length > 0) {
+        html += '<div style="margin-bottom: 15px;">';
+        html += '<strong style="color: #856404;">Warnings (' + result.warnings.length + '):</strong><br>';
+        html += '<div style="max-height: 150px; overflow-y: auto; background: #fff3cd; padding: 10px; border-radius: 5px; margin-top: 10px;">';
+        result.warnings.forEach(warning => {
+            html += '<div style="padding: 5px; color: #856404;">• ' + escapeHtml(warning) + '</div>';
+        });
+        html += '</div>';
+        html += '</div>';
+    }
+    
+    validationContent.innerHTML = html;
+    
+    // Show confirm button only if valid
+    if (result.valid) {
+        confirmBtn.style.display = 'inline-block';
+        confirmBtn.onclick = function() {
+            performImport(filename);
+        };
+    } else {
+        confirmBtn.style.display = 'none';
+    }
+}
+
+function performImport(filename) {
+    if (!confirm('Import customers from ' + filename + '? This will add new rows to the database.')) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('action', 'import_excel');
+    formData.append('filename', filename);
+    
+    // Show loading
+    const validationContent = document.getElementById('validationContent');
+    validationContent.innerHTML = '<p style="text-align: center; padding: 20px;">Importing... Please wait.</p>';
+    
+    fetch('api.php', {
+        method: 'POST',
+        body: formData
+    })
+        .then(response => response.json())
+        .then(result => {
+            document.getElementById('excelValidationModal').style.display = 'none';
+            document.getElementById('importExcelModal').style.display = 'none';
+            if (result.success) {
+                showMessage('Success', result.message);
+            } else {
+                showMessage('Error', result.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('excelValidationModal').style.display = 'none';
+            showMessage('Error', 'An error occurred while importing Excel file');
+        });
+}
+
+function showImportDb() {
+    fetch('api.php?action=list_backup_files')
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                const dbFiles = result.data.filter(f => f.type === 'database');
+                displayImportDbFiles(dbFiles);
+                document.getElementById('importDbModal').style.display = 'block';
+            } else {
+                showMessage('Error', result.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('Error', 'An error occurred while fetching database files');
+        });
+}
+
+function displayImportDbFiles(files) {
+    const container = document.getElementById('dbFilesList');
+    
+    if (files.length === 0) {
+        container.innerHTML = '<p style="text-align: center; padding: 20px; color: #666;">No database files found in backup directory.</p>';
+        return;
+    }
+    
+    let html = '<div style="max-height: 400px; overflow-y: auto;">';
+    files.forEach(file => {
+        const sizeKB = (file.size / 1024).toFixed(2);
+        html += '<div style="padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9;">';
+        html += '<div style="display: flex; justify-content: space-between; align-items: center;">';
+        html += '<div>';
+        html += '<strong>' + escapeHtml(file.filename) + '</strong><br>';
+        html += '<small style="color: #666;">Size: ' + sizeKB + ' KB | Modified: ' + escapeHtml(file.modified) + '</small>';
+        html += '</div>';
+        html += '<button type="button" class="btn-primary" onclick="importDbFile(\'' + escapeHtml(file.filename) + '\')" style="margin-left: 10px;">Import</button>';
+        html += '</div>';
+        html += '</div>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function importDbFile(filename) {
+    if (!confirm('Import customers from ' + filename + '? This will add new rows to the database.')) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('action', 'import_db');
+    formData.append('filename', filename);
+    
+    fetch('api.php', {
+        method: 'POST',
+        body: formData
+    })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                showMessage('Success', result.message);
+                document.getElementById('importDbModal').style.display = 'none';
+            } else {
+                showMessage('Error', result.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('Error', 'An error occurred while importing database');
         });
 }
 
@@ -672,6 +1039,11 @@ function switchTab(tabName) {
     
     // Activate button
     event.target.classList.add('active');
+    
+    // Load database stats if Database tab is selected
+    if (tabName === 'database') {
+        loadDatabaseStats();
+    }
 }
 
 function handleCreateAgent(e) {
@@ -726,8 +1098,13 @@ function handleAddProductCategory(e) {
     });
 }
 
-function deleteProductCategory(id) {
-    if (!confirm('Are you sure you want to delete this product category?')) {
+function deleteProductCategory(name) {
+    // Legacy function - kept for compatibility
+    console.warn('deleteProductCategory(name) is deprecated, use deleteProductCategoryById(id, name)');
+}
+
+function deleteProductCategoryById(id, name) {
+    if (!confirm('Are you sure you want to delete product category "' + name + '"?')) {
         return;
     }
     
@@ -743,7 +1120,19 @@ function deleteProductCategory(id) {
     .then(result => {
         if (result.success) {
             showMessage('Success', result.message);
-            setTimeout(() => location.reload(), 1500);
+            // Remove the row from the table without reloading the page
+            const row = document.querySelector(`button[data-id="${id}"]`)?.closest('tr');
+            if (row) {
+                row.remove();
+            } else {
+                // Fallback: reload if row not found
+                setTimeout(() => location.reload(), 1500);
+            }
+            // Refresh database statistics if Database tab is visible
+            const dbTab = document.getElementById('database-tab');
+            if (dbTab && dbTab.classList.contains('active')) {
+                loadDatabaseStats();
+            }
         } else {
             showMessage('Error', result.message);
         }
@@ -780,8 +1169,13 @@ function handleAddCustomerType(e) {
     });
 }
 
-function deleteCustomerType(id) {
-    if (!confirm('Are you sure you want to delete this customer type?')) {
+function deleteCustomerType(name) {
+    // Legacy function - kept for compatibility
+    console.warn('deleteCustomerType(name) is deprecated, use deleteCustomerTypeById(id, name)');
+}
+
+function deleteCustomerTypeById(id, name) {
+    if (!confirm('Are you sure you want to delete customer type "' + name + '"?')) {
         return;
     }
     
@@ -797,7 +1191,19 @@ function deleteCustomerType(id) {
     .then(result => {
         if (result.success) {
             showMessage('Success', result.message);
-            setTimeout(() => location.reload(), 1500);
+            // Remove the row from the table without reloading the page
+            const row = document.querySelector(`button[data-id="${id}"]`)?.closest('tr');
+            if (row) {
+                row.remove();
+            } else {
+                // Fallback: reload if row not found
+                setTimeout(() => location.reload(), 1500);
+            }
+            // Refresh database statistics if Database tab is visible
+            const dbTab = document.getElementById('database-tab');
+            if (dbTab && dbTab.classList.contains('active')) {
+                loadDatabaseStats();
+            }
         } else {
             showMessage('Error', result.message);
         }
@@ -834,13 +1240,124 @@ function handleAddStatus(e) {
     });
 }
 
-function deleteStatus(id) {
-    if (!confirm('Are you sure you want to delete this status?')) {
+function handleAddSource(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    formData.append('action', 'add_source');
+    
+    fetch('api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showMessage('Success', result.message);
+            e.target.reset();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showMessage('Error', result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Error', 'An error occurred');
+    });
+}
+
+function deleteStatus(name) {
+    // Legacy function - kept for compatibility
+    console.warn('deleteStatus(name) is deprecated, use deleteStatusById(id, name)');
+}
+
+function deleteStatusById(id, name) {
+    if (!confirm('Are you sure you want to delete status "' + name + '"?')) {
         return;
     }
     
     const formData = new FormData();
     formData.append('action', 'delete_status');
+    formData.append('id', id);
+    
+    fetch('api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showMessage('Success', result.message);
+            // Remove the row from the table without reloading the page
+            const row = document.querySelector(`button[data-id="${id}"]`)?.closest('tr');
+            if (row) {
+                row.remove();
+            } else {
+                // Fallback: reload if row not found
+                setTimeout(() => location.reload(), 1500);
+            }
+            // Refresh database statistics if Database tab is visible
+            const dbTab = document.getElementById('database-tab');
+            if (dbTab && dbTab.classList.contains('active')) {
+                loadDatabaseStats();
+            }
+        } else {
+            showMessage('Error', result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Error', 'An error occurred');
+    });
+}
+
+function deleteSourceById(id, name) {
+    if (!confirm('Are you sure you want to delete inquiry source "' + name + '"?')) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('action', 'delete_source');
+    formData.append('id', id);
+    
+    fetch('api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showMessage('Success', result.message);
+            // Remove the row from the table without reloading the page
+            const row = document.querySelector(`button[data-id="${id}"]`)?.closest('tr');
+            if (row) {
+                row.remove();
+            } else {
+                // Fallback: reload if row not found
+                setTimeout(() => location.reload(), 1500);
+            }
+            // Refresh database statistics if Database tab is visible
+            const dbTab = document.getElementById('database-tab');
+            if (dbTab && dbTab.classList.contains('active')) {
+                loadDatabaseStats();
+            }
+        } else {
+            showMessage('Error', result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Error', 'An error occurred');
+    });
+}
+
+function deleteUser(id, username) {
+    if (!confirm('Are you sure you want to delete user "' + username + '"?\n\nThis action cannot be undone.')) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('action', 'delete_user');
     formData.append('id', id);
     
     fetch('api.php', {
@@ -858,8 +1375,186 @@ function deleteStatus(id) {
     })
     .catch(error => {
         console.error('Error:', error);
-        showMessage('Error', 'An error occurred');
+        showMessage('Error', 'An error occurred while deleting user');
     });
+}
+
+function clearDatabase() {
+    // Double confirmation for safety
+    const confirm1 = confirm('⚠️ WARNING: This will permanently delete ALL customer data from the database!\n\nThis action cannot be undone.\n\nAre you sure you want to proceed?');
+    if (!confirm1) {
+        return;
+    }
+    
+    const confirm2 = confirm('⚠️ FINAL WARNING: You are about to delete all customer records!\n\nType "YES" in the next prompt to confirm, or click Cancel to abort.');
+    if (!confirm2) {
+        return;
+    }
+    
+    const confirmText = prompt('Type "CLEAR DATABASE" (in all caps) to confirm deletion:');
+    if (confirmText !== 'CLEAR DATABASE') {
+        showMessage('Cancelled', 'Database clear operation cancelled. No data was deleted.');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('action', 'clear_database');
+    
+    fetch('api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showMessage('Success', result.message);
+            // Reload stats after clearing
+            setTimeout(() => {
+                loadDatabaseStats();
+            }, 1000);
+        } else {
+            showMessage('Error', result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Error', 'An error occurred while clearing the database');
+    });
+}
+
+function loadDatabaseStats() {
+    // Add cache-busting parameter to ensure fresh data
+    const timestamp = new Date().getTime();
+    fetch('api.php?action=get_database_stats&_t=' + timestamp)
+        .then(response => response.json())
+        .then(result => {
+            const statsContainer = document.getElementById('databaseStats');
+            if (result.success && result.data) {
+                const stats = result.data;
+                let html = '';
+                
+                // Database File Information
+                html += '<div style="margin-bottom: 20px; padding: 15px; background: #e7f3ff; border-radius: 5px; border-left: 4px solid #2196F3;">';
+                html += '<h4 style="margin-top: 0; color: #1976D2;">Database File</h4>';
+                html += '<div style="font-family: monospace; color: #333;">';
+                html += '<strong>Filename:</strong> ' + (stats.db_filename || 'crm.db') + '<br>';
+                html += '<strong>Path:</strong> ' + (stats.db_path || 'data/crm.db');
+                html += '</div>';
+                html += '</div>';
+                
+                // Record Counts
+                html += '<div style="margin-bottom: 20px;">';
+                html += '<h4 style="color: #333; margin-bottom: 10px;">Record Counts</h4>';
+                html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">';
+                html += '<div style="padding: 15px; background: white; border-radius: 5px; border-left: 4px solid #667eea;">';
+                html += '<div style="font-size: 24px; font-weight: bold; color: #667eea;">' + (stats.customers || 0) + '</div>';
+                html += '<div style="color: #666; margin-top: 5px;">Customer Records</div>';
+                html += '</div>';
+                
+                html += '<div style="padding: 15px; background: white; border-radius: 5px; border-left: 4px solid #28a745;">';
+                html += '<div style="font-size: 24px; font-weight: bold; color: #28a745;">' + (stats.users || 0) + '</div>';
+                html += '<div style="color: #666; margin-top: 5px;">Users</div>';
+                html += '</div>';
+                
+                html += '<div style="padding: 15px; background: white; border-radius: 5px; border-left: 4px solid #ffc107;">';
+                html += '<div style="font-size: 24px; font-weight: bold; color: #ffc107;">' + (stats.product_categories || 0) + '</div>';
+                html += '<div style="color: #666; margin-top: 5px;">Product Categories</div>';
+                html += '</div>';
+                
+                html += '<div style="padding: 15px; background: white; border-radius: 5px; border-left: 4px solid #17a2b8;">';
+                html += '<div style="font-size: 24px; font-weight: bold; color: #17a2b8;">' + (stats.customer_types || 0) + '</div>';
+                html += '<div style="color: #666; margin-top: 5px;">Customer Types</div>';
+                html += '</div>';
+                
+                html += '<div style="padding: 15px; background: white; border-radius: 5px; border-left: 4px solid #9c27b0;">';
+                html += '<div style="font-size: 24px; font-weight: bold; color: #9c27b0;">' + (stats.sources || 0) + '</div>';
+                html += '<div style="color: #666; margin-top: 5px;">Inquiry Sources</div>';
+                html += '</div>';
+                
+                html += '<div style="padding: 15px; background: white; border-radius: 5px; border-left: 4px solid #dc3545;">';
+                html += '<div style="font-size: 24px; font-weight: bold; color: #dc3545;">' + (stats.statuses || 0) + '</div>';
+                html += '<div style="color: #666; margin-top: 5px;">Status</div>';
+                html += '</div>';
+                
+                html += '</div>';
+                html += '</div>';
+                
+                // Table Field Names
+                if (stats.table_fields) {
+                    html += '<div style="margin-bottom: 20px;">';
+                    html += '<h4 style="color: #333; margin-bottom: 10px;">Database Table Fields</h4>';
+                    html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">';
+                    
+                    const tableNames = {
+                        'customers': 'Customers',
+                        'users': 'Users',
+                        'product_categories': 'Product Categories',
+                        'customer_types': 'Customer Types',
+                        'sources': 'Inquiry Sources',
+                        'statuses': 'Status'
+                    };
+                    
+                    for (const [table, displayName] of Object.entries(tableNames)) {
+                        if (stats.table_fields[table] && stats.table_fields[table].length > 0) {
+                            html += '<div style="padding: 15px; background: white; border-radius: 5px; border: 1px solid #ddd;">';
+                            html += '<strong style="color: #333; display: block; margin-bottom: 8px;">' + displayName + '</strong>';
+                            html += '<div style="font-family: monospace; font-size: 12px; color: #666;">';
+                            html += stats.table_fields[table].join(', ');
+                            html += '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    
+                    html += '</div>';
+                    html += '</div>';
+                }
+                
+                // Backup Files
+                if (stats.backup_files && stats.backup_files.length > 0) {
+                    html += '<div style="margin-bottom: 20px;">';
+                    html += '<h4 style="color: #333; margin-bottom: 10px;">Backup Files (' + stats.backup_files.length + ')</h4>';
+                    html += '<div style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; background: white;">';
+                    html += '<table style="width: 100%; border-collapse: collapse;">';
+                    html += '<thead style="background: #f5f5f5; position: sticky; top: 0;">';
+                    html += '<tr>';
+                    html += '<th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Filename</th>';
+                    html += '<th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Type</th>';
+                    html += '<th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Size</th>';
+                    html += '<th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Date</th>';
+                    html += '</tr>';
+                    html += '</thead>';
+                    html += '<tbody>';
+                    
+                    stats.backup_files.forEach(file => {
+                        html += '<tr style="border-bottom: 1px solid #eee;">';
+                        html += '<td style="padding: 8px; font-family: monospace; font-size: 12px;">' + (file.filename || 'N/A') + '</td>';
+                        html += '<td style="padding: 8px; color: #666;">' + (file.type || 'N/A') + '</td>';
+                        html += '<td style="padding: 8px; color: #666;">' + (file.size || 'N/A') + '</td>';
+                        html += '<td style="padding: 8px; color: #666;">' + (file.date || 'N/A') + '</td>';
+                        html += '</tr>';
+                    });
+                    
+                    html += '</tbody>';
+                    html += '</table>';
+                    html += '</div>';
+                    html += '</div>';
+                } else {
+                    html += '<div style="margin-bottom: 20px; padding: 15px; background: #fff3cd; border-radius: 5px; border-left: 4px solid #ffc107;">';
+                    html += '<h4 style="margin-top: 0; color: #856404;">Backup Files</h4>';
+                    html += '<p style="color: #856404; margin: 0;">No backup files found.</p>';
+                    html += '</div>';
+                }
+                
+                statsContainer.innerHTML = html;
+            } else {
+                statsContainer.innerHTML = '<p style="color: #dc3545;">Failed to load database statistics: ' + (result.message || 'Unknown error') + '</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            const statsContainer = document.getElementById('databaseStats');
+            statsContainer.innerHTML = '<p style="color: #dc3545;">Error loading database statistics</p>';
+        });
 }
 
 // Utility Functions

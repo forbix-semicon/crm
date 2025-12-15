@@ -32,8 +32,7 @@ function saveCustomer($pdo, $data) {
                     date = ?, time = ?, customer_name = ?, company_name = ?, 
                     primary_contact = ?, secondary_contact = ?, email_id = ?, 
                     city = ?, product_category = ?, requirement = ?, source = ?, 
-                    assigned_to = ?, customer_type = ?, status = ?, comments = ?,
-                    updated_at = CURRENT_TIMESTAMP
+                    assigned_to = ?, customer_type = ?, status = ?, comments = ?
                     WHERE customer_id = ?");
                     
                 $stmt->execute([
@@ -78,7 +77,7 @@ function saveCustomer($pdo, $data) {
 }
 
 function getAllCustomers($pdo) {
-    $stmt = $pdo->query("SELECT * FROM customers ORDER BY id DESC");
+    $stmt = $pdo->query("SELECT * FROM customers ORDER BY customer_id DESC");
     return $stmt->fetchAll();
 }
 
@@ -109,7 +108,7 @@ function updateCustomerField($pdo, $customer_id, $field, $value) {
             throw new Exception("Invalid field");
         }
         
-        $stmt = $pdo->prepare("UPDATE customers SET $field = ?, updated_at = CURRENT_TIMESTAMP WHERE customer_id = ?");
+        $stmt = $pdo->prepare("UPDATE customers SET $field = ? WHERE customer_id = ?");
         $stmt->execute([$value, $customer_id]);
         
         return ['success' => true, 'message' => 'Field updated successfully'];

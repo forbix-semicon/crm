@@ -11,6 +11,8 @@ require_once __DIR__ . '/modules/auth.php';
 require_once __DIR__ . '/modules/customer.php';
 require_once __DIR__ . '/modules/admin.php';
 require_once __DIR__ . '/modules/backup.php';
+require_once __DIR__ . '/modules/export.php';
+require_once __DIR__ . '/modules/import.php';
 
 if (!checkLogin()) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
@@ -66,7 +68,8 @@ try {
             
         case 'delete_product_category':
             requireAdmin();
-            $result = deleteProductCategory($pdo, $_POST['id']);
+            $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+            $result = deleteProductCategory($pdo, $id);
             echo json_encode($result);
             break;
             
@@ -83,7 +86,8 @@ try {
             
         case 'delete_customer_type':
             requireAdmin();
-            $result = deleteCustomerType($pdo, $_POST['id']);
+            $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+            $result = deleteCustomerType($pdo, $id);
             echo json_encode($result);
             break;
             
@@ -100,7 +104,46 @@ try {
             
         case 'delete_status':
             requireAdmin();
-            $result = deleteStatus($pdo, $_POST['id']);
+            $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+            $result = deleteStatus($pdo, $id);
+            echo json_encode($result);
+            break;
+            
+        case 'add_source':
+            requireAdmin();
+            $result = addSource($pdo, $_POST['name']);
+            echo json_encode($result);
+            break;
+            
+        case 'get_sources':
+            $sources = getAllSources($pdo);
+            echo json_encode(['success' => true, 'data' => $sources]);
+            break;
+            
+        case 'delete_source':
+            requireAdmin();
+            $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+            $result = deleteSource($pdo, $id);
+            echo json_encode($result);
+            break;
+            
+        case 'delete_user':
+            requireAdmin();
+            $result = deleteUser($pdo, $_POST['id']);
+            echo json_encode($result);
+            break;
+            
+        case 'clear_database':
+            requireAdmin();
+            $result = clearDatabase($pdo);
+            echo json_encode($result);
+            break;
+            
+        case 'get_database_stats':
+            requireAdmin();
+            // Get database path from config
+            require_once __DIR__ . '/config/db.php';
+            $result = getDatabaseStats($pdo, $db_path);
             echo json_encode($result);
             break;
             
@@ -113,6 +156,59 @@ try {
         case 'get_next_customer_id':
             $next_id = getNextCustomerID($pdo);
             echo json_encode(['success' => true, 'customer_id' => $next_id]);
+            break;
+            
+        case 'list_backup_files':
+            global $db_path;
+            $backup_dir = dirname($db_path) . '/backups';
+            $result = listBackupFiles($backup_dir);
+            echo json_encode($result);
+            break;
+            
+        case 'export_excel':
+            global $db_path;
+            $backup_dir = dirname($db_path) . '/backups';
+            $result = exportToExcel($pdo, $backup_dir);
+            echo json_encode($result);
+            break;
+            
+        case 'validate_excel':
+            global $db_path;
+            $backup_dir = dirname($db_path) . '/backups';
+            $filename = $_POST['filename'] ?? $_GET['filename'] ?? '';
+            if (empty($filename)) {
+                echo json_encode(['success' => false, 'message' => 'Filename is required']);
+                break;
+            }
+            $filepath = $backup_dir . '/' . $filename;
+            $result = validateExcelFile($pdo, $filepath);
+            echo json_encode($result);
+            break;
+            
+        case 'import_excel':
+            global $db_path;
+            $backup_dir = dirname($db_path) . '/backups';
+            $filename = $_POST['filename'] ?? '';
+            if (empty($filename)) {
+                echo json_encode(['success' => false, 'message' => 'Filename is required']);
+                break;
+            }
+            $filepath = $backup_dir . '/' . $filename;
+            $result = importFromExcel($pdo, $filepath);
+            echo json_encode($result);
+            break;
+            
+        case 'import_db':
+            global $db_path;
+            $backup_dir = dirname($db_path) . '/backups';
+            $filename = $_POST['filename'] ?? '';
+            if (empty($filename)) {
+                echo json_encode(['success' => false, 'message' => 'Filename is required']);
+                break;
+            }
+            $source_db_path = $backup_dir . '/' . $filename;
+            $result = importFromDB($pdo, $source_db_path, $db_path);
+            echo json_encode($result);
             break;
             
         default:

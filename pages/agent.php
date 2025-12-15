@@ -127,7 +127,11 @@ $productCategories = getAllProductCategories($pdo);
                 <button type="button" id="shortReportBtn" class="btn-secondary">Short Report</button>
                 <button type="button" id="expandedReportBtn" class="btn-secondary">Expanded Report</button>
                 <button type="button" id="backupBtn" class="btn-secondary">Backup</button>
-                <button type="button" id="listAllBtn" class="btn-secondary">List All</button>
+                <button type="button" id="listAllBtn" class="btn-secondary">List/Modify All</button>
+                <button type="button" id="showDatabasesBtn" class="btn-secondary">Show Databases</button>
+                <button type="button" id="exportExcelBtn" class="btn-secondary">Export as Excel</button>
+                <button type="button" id="importExcelBtn" class="btn-secondary">Import from Excel</button>
+                <button type="button" id="importDbBtn" class="btn-secondary">Import from DB</button>
             </div>
         </form>
 
@@ -177,6 +181,73 @@ $productCategories = getAllProductCategories($pdo);
         </div>
         <div class="modal-footer">
             <button type="button" class="btn-primary" onclick="closeMessageModal()">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- Show Databases Popup -->
+<div id="showDatabasesModal" class="modal">
+    <div class="modal-content large-modal">
+        <div class="modal-header">
+            <h2>Backup Files - Databases & Excel</h2>
+            <span class="close">&times;</span>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <div id="databasesContent"></div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="document.getElementById('showDatabasesModal').style.display='none'">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Import Excel Popup -->
+<div id="importExcelModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Import from Excel</h2>
+            <span class="close">&times;</span>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <p>Select an Excel (.xlsx) or CSV (.csv) file from backup directory:</p>
+            <div id="excelFilesList"></div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="document.getElementById('importExcelModal').style.display='none'">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Excel Validation Popup -->
+<div id="excelValidationModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="validationTitle">Excel File Validation</h2>
+            <span class="close">&times;</span>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <div id="validationContent"></div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" id="confirmImportBtn" class="btn-primary" style="display: none;">Confirm Import</button>
+            <button type="button" class="btn-secondary" onclick="document.getElementById('excelValidationModal').style.display='none'">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Import DB Popup -->
+<div id="importDbModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Import from Database</h2>
+            <span class="close">&times;</span>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <p>Select a database file from backup directory:</p>
+            <div id="dbFilesList"></div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="document.getElementById('importDbModal').style.display='none'">Cancel</button>
         </div>
     </div>
 </div>

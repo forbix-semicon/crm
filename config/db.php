@@ -25,41 +25,85 @@ try {
 }
 
 function initDatabase($pdo) {
+    // Check if db_initialized table exists and has correct structure
+    $tableExists = false;
+    $columnExists = false;
+    try {
+        $stmt = $pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name='db_initialized'");
+        $tableExists = $stmt->fetch() !== false;
+        
+        if ($tableExists) {
+            // Check if column exists
+            $stmt = $pdo->query("PRAGMA table_info(db_initialized)");
+            $columns = $stmt->fetchAll();
+            foreach ($columns as $col) {
+                if ($col['name'] === 'defaults_initialized') {
+                    $columnExists = true;
+                    break;
+                }
+            }
+        }
+    } catch (PDOException $e) {
+        // Error checking, assume table doesn't exist
+    }
+    
+    // Create or recreate table with correct structure
+    if (!$tableExists || !$columnExists) {
+        // Drop and recreate to ensure correct structure
+        try {
+            $pdo->exec("DROP TABLE IF EXISTS db_initialized");
+        } catch (PDOException $e) {
+            // Ignore errors
+        }
+        $pdo->exec("CREATE TABLE db_initialized (
+            id INTEGER PRIMARY KEY,
+            defaults_initialized INTEGER DEFAULT 0
+        )");
+    }
+    
+    // Check if defaults have been initialized before
+    $defaultsInitialized = false;
+    try {
+        $stmt = $pdo->query("SELECT defaults_initialized FROM db_initialized WHERE id = 1");
+        $flag = $stmt->fetch();
+        if ($flag && isset($flag['defaults_initialized'])) {
+            $defaultsInitialized = intval($flag['defaults_initialized']) == 1;
+        }
+    } catch (PDOException $e) {
+        // Table doesn't exist or error, defaults not initialized
+        $defaultsInitialized = false;
+    }
+    
     // Users table
     $pdo->exec("CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'agent',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        role TEXT NOT NULL DEFAULT 'agent'
     )");
     
     // Product Categories table
     $pdo->exec("CREATE TABLE IF NOT EXISTS product_categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        name TEXT UNIQUE NOT NULL
     )");
     
     // Customer Types table
     $pdo->exec("CREATE TABLE IF NOT EXISTS customer_types (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        name TEXT UNIQUE NOT NULL
     )");
     
     // Statuses table
     $pdo->exec("CREATE TABLE IF NOT EXISTS statuses (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        name TEXT UNIQUE NOT NULL
     )");
     
     // Sources table
     $pdo->exec("CREATE TABLE IF NOT EXISTS sources (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        name TEXT UNIQUE NOT NULL
     )");
     
     // Customers table
@@ -80,67 +124,72 @@ function initDatabase($pdo) {
         assigned_to TEXT,
         customer_type TEXT,
         status TEXT,
-        comments TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        comments TEXT
     )");
     
-    // Initialize default admin user if not exists
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = 'admin'");
-    $stmt->execute();
-    if ($stmt->fetchColumn() == 0) {
-        $stmt = $pdo->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)");
-        $stmt->execute(['admin', password_hash('admin', PASSWORD_DEFAULT), 'admin']);
-    }
-    
-    // Initialize default agent user if not exists
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = 'agent1'");
-    $stmt->execute();
-    if ($stmt->fetchColumn() == 0) {
-        $stmt = $pdo->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)");
-        $stmt->execute(['agent1', password_hash('agent1', PASSWORD_DEFAULT), 'agent']);
-    }
-    
-    // Initialize default product categories
-    $defaultCategories = [
-        'Nurse Call', 'Panic Alarm', 'Peon Call', 'Long Range', 'Token Display',
-        'Motor Control', 'Air Monitor', 'Transmitter Receiver', 'Customized Solution'
-    ];
-    foreach ($defaultCategories as $cat) {
-        $stmt = $pdo->prepare("INSERT OR IGNORE INTO product_categories (name) VALUES (?)");
-        $stmt->execute([$cat]);
-    }
-    
-    // Initialize default customer types
-    $defaultCustomerTypes = ['New Customer', 'Existing Customer'];
-    foreach ($defaultCustomerTypes as $type) {
-        $stmt = $pdo->prepare("INSERT OR IGNORE INTO customer_types (name) VALUES (?)");
-        $stmt->execute([$type]);
-    }
-    
-    // Initialize default sources
-    $defaultSources = [
-        'Phone Call', 'Whatsup', 'Website', 'Email', 'Social Media', 'Not Sure'
-    ];
-    foreach ($defaultSources as $source) {
-        $stmt = $pdo->prepare("INSERT OR IGNORE INTO sources (name) VALUES (?)");
-        $stmt->execute([$source]);
-    }
-    
-    // Initialize default statuses
-    $defaultStatuses = [
-        'Introduction Email', 'Talks going on', 'Quotation sent', 'Demo Requested',
-        'PO released', 'Waiting for Payment', 'Converted', 'Rejected',
-        'Follow-up soon', 'Follow-up later'
-    ];
-    foreach ($defaultStatuses as $status) {
-        $stmt = $pdo->prepare("INSERT OR IGNORE INTO statuses (name) VALUES (?)");
-        $stmt->execute([$status]);
+    // Only initialize defaults if they haven't been initialized before
+    if (!$defaultsInitialized) {
+        // Initialize default admin user if not exists
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = 'admin'");
+        $stmt->execute();
+        if ($stmt->fetchColumn() == 0) {
+            $stmt = $pdo->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)");
+            $stmt->execute(['admin', password_hash('admin', PASSWORD_DEFAULT), 'admin']);
+        }
+        
+        // Initialize default agent user if not exists
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = 'agent1'");
+        $stmt->execute();
+        if ($stmt->fetchColumn() == 0) {
+            $stmt = $pdo->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)");
+            $stmt->execute(['agent1', password_hash('agent1', PASSWORD_DEFAULT), 'agent']);
+        }
+        
+        // Initialize default product categories
+        $defaultCategories = [
+            'Category 1', 'Category 2', 'Category 3', 'Category 4', 'Category 5',
+            'Category 6', 'Category 7', 'Category 8', 'Category 9', 'Category 10'
+        ];
+        foreach ($defaultCategories as $cat) {
+            $stmt = $pdo->prepare("INSERT OR IGNORE INTO product_categories (name) VALUES (?)");
+            $stmt->execute([$cat]);
+        }
+        
+        // Initialize default customer types
+        $defaultCustomerTypes = ['New Customer', 'Existing Customer'];
+        foreach ($defaultCustomerTypes as $type) {
+            $stmt = $pdo->prepare("INSERT OR IGNORE INTO customer_types (name) VALUES (?)");
+            $stmt->execute([$type]);
+        }
+        
+        // Initialize default sources
+        $defaultSources = [
+            'Email', 'Phone Call', 'Social Media', 'Website', 'Whatsup', 'Not Sure'
+        ];
+        foreach ($defaultSources as $source) {
+            $stmt = $pdo->prepare("INSERT OR IGNORE INTO sources (name) VALUES (?)");
+            $stmt->execute([$source]);
+        }
+        
+        // Initialize default statuses
+        $defaultStatuses = [
+            'Introduction Email', 'Talks going on', 'Quotation sent', 'Demo Requested',
+            'PO released', 'Waiting for Payment', 'Converted', 'Rejected',
+            'Follow-up soon', 'Follow-up later'
+        ];
+        foreach ($defaultStatuses as $status) {
+            $stmt = $pdo->prepare("INSERT OR IGNORE INTO statuses (name) VALUES (?)");
+            $stmt->execute([$status]);
+        }
+        
+        // Mark defaults as initialized
+        $stmt = $pdo->prepare("INSERT OR REPLACE INTO db_initialized (id, defaults_initialized) VALUES (1, 1)");
+        $stmt->execute();
     }
 }
 
 function getNextCustomerID($pdo) {
-    $stmt = $pdo->query("SELECT customer_id FROM customers ORDER BY id DESC LIMIT 1");
+    $stmt = $pdo->query("SELECT customer_id FROM customers ORDER BY customer_id DESC LIMIT 1");
     $last = $stmt->fetch();
     
     if ($last && preg_match('/CID(\d+)/', $last['customer_id'], $matches)) {
