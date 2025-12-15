@@ -723,6 +723,7 @@ function displayAllCustomers(customers) {
     const allowedCustomerTypes = Array.isArray(window.allowedCustomerTypes) ? window.allowedCustomerTypes : [];
     const allowedStatuses = Array.isArray(window.allowedStatuses) ? window.allowedStatuses : [];
     const allowedSources = Array.isArray(window.allowedSources) ? window.allowedSources : [];
+    const statusColorMap = window.statusColors || {};
 
     // Define column headers with required order
     const columns = [
@@ -758,7 +759,13 @@ function displayAllCustomers(customers) {
     tableHtml += '<tbody>';
     
     customers.forEach(customer => {
-        tableHtml += '<tr>';
+        const statusValue = (customer.status || '').trim();
+        const rowColor = statusColorMap[statusValue] || '';
+        const textColor = rowColor ? getReadableTextColor(rowColor) : '';
+        const rowStyle = rowColor ? ' style="background-color: ' + escapeHtml(rowColor) + '; color: ' + escapeHtml(textColor) + ';"' : '';
+        const cellStyle = rowColor ? ' style="background-color: ' + escapeHtml(rowColor) + '; color: ' + escapeHtml(textColor) + ';"' : '';
+        
+        tableHtml += '<tr' + rowStyle + '>';
         columns.forEach(col => {
             let value = customer[col.key] || '';
             const customerId = customer.customer_id || '';
@@ -783,7 +790,7 @@ function displayAllCustomers(customers) {
                 }
             }
             
-            tableHtml += '<td class="editable-cell" data-customer-id="' + escapeHtml(customerId) + '" data-field="' + escapeHtml(col.key) + '">';
+            tableHtml += '<td class="editable-cell"' + cellStyle + ' data-customer-id="' + escapeHtml(customerId) + '" data-field="' + escapeHtml(col.key) + '">';
             
             if (col.type === 'textarea') {
                 const extraClass = col.key === 'comments' ? ' wide-cell' : (col.key === 'requirement' ? ' wide-cell' : '');
@@ -942,6 +949,23 @@ function getInputValueForSave(input) {
     return input.value.trim();
 }
 
+// Determine readable text color (black/white) based on background
+function getReadableTextColor(hexColor) {
+    if (!hexColor) return '#000';
+    // Normalize hex
+    let hex = hexColor.replace('#', '');
+    if (hex.length === 3) {
+        hex = hex.split('').map(c => c + c).join('');
+    }
+    if (hex.length !== 6) return '#000';
+    const r = parseInt(hex.substr(0,2), 16);
+    const g = parseInt(hex.substr(2,2), 16);
+    const b = parseInt(hex.substr(4,2), 16);
+    // YIQ formula
+    const yiq = (r*299 + g*587 + b*114) / 1000;
+    return yiq >= 128 ? '#000' : '#fff';
+}
+
 function saveCellValue(customerId, field, value) {
     if (!customerId || !field) {
         return;
@@ -990,6 +1014,9 @@ function saveCellValue(customerId, field, value) {
             if (result.success) {
                 input.style.borderColor = '#28a745';
                 input.style.backgroundColor = '#f0fff4';
+                if (field === 'status') {
+                    applyRowStatusColor(customerId, value);
+                }
                 setTimeout(() => {
                     input.style.borderColor = '';
                     input.style.backgroundColor = '';
@@ -1017,6 +1044,29 @@ function saveCellValue(customerId, field, value) {
         }
         showMessage('Error', 'An error occurred while saving');
     });
+}
+
+function applyRowStatusColor(customerId, statusValue) {
+    const row = document.querySelector(`tr td[data-customer-id="${customerId}"]`)?.parentElement;
+    if (!row) return;
+    const map = window.statusColors || {};
+    const color = map[statusValue] || '';
+    if (color) {
+        const textColor = getReadableTextColor(color);
+        row.style.backgroundColor = color;
+        row.style.color = textColor;
+        row.querySelectorAll('td').forEach(td => {
+            td.style.backgroundColor = color;
+            td.style.color = textColor;
+        });
+    } else {
+        row.style.backgroundColor = '';
+        row.style.color = '';
+        row.querySelectorAll('td').forEach(td => {
+            td.style.backgroundColor = '';
+            td.style.color = '';
+        });
+    }
 }
 
 function loadCustomerData(customerId) {
@@ -1285,6 +1335,28 @@ function handleAddStatus(e) {
             setTimeout(() => location.reload(), 1500);
         } else {
             showMessage('Error', result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Error', 'An error occurred');
+    });
+}
+
+function updateStatusColor(id, color) {
+    const formData = new FormData();
+    formData.append('action', 'update_status_color');
+    formData.append('id', id);
+    formData.append('color', color);
+    
+    fetch('api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (!result.success) {
+            showMessage('Error', result.message || 'Failed to update color');
         }
     })
     .catch(error => {

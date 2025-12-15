@@ -127,16 +127,36 @@ function deleteCustomerType($pdo, $id) {
     }
 }
 
-function addStatus($pdo, $name) {
+function addStatus($pdo, $name, $color = '#e0e0e0') {
     try {
-        $stmt = $pdo->prepare("INSERT INTO statuses (name) VALUES (?)");
-        $stmt->execute([$name]);
+        $color = $color ?: '#e0e0e0';
+        $stmt = $pdo->prepare("INSERT INTO statuses (name, color) VALUES (?, ?)");
+        $stmt->execute([$name, $color]);
         return ['success' => true, 'message' => 'Status added successfully'];
     } catch (PDOException $e) {
         if ($e->getCode() == 23000) {
             return ['success' => false, 'message' => 'Status already exists'];
         }
         return ['success' => false, 'message' => $e->getMessage()];
+    }
+}
+
+function updateStatusColor($pdo, $id, $color) {
+    try {
+        $id = intval($id);
+        if ($id <= 0) {
+            return ['success' => false, 'message' => 'Invalid status ID'];
+        }
+        if (!$color) {
+            return ['success' => false, 'message' => 'Color is required'];
+        }
+        $stmt = $pdo->prepare("UPDATE statuses SET color = ? WHERE id = ?");
+        $stmt->execute([$color, $id]);
+        return ['success' => true, 'message' => 'Status color updated'];
+    } catch (PDOException $e) {
+        return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
+    } catch (Exception $e) {
+        return ['success' => false, 'message' => 'Error: ' . $e->getMessage()];
     }
 }
 

@@ -93,7 +93,8 @@ try {
             
         case 'add_status':
             requireAdmin();
-            $result = addStatus($pdo, $_POST['name']);
+            $color = isset($_POST['color']) ? $_POST['color'] : '#e0e0e0';
+            $result = addStatus($pdo, $_POST['name'], $color);
             echo json_encode($result);
             break;
             
@@ -106,6 +107,14 @@ try {
             requireAdmin();
             $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
             $result = deleteStatus($pdo, $id);
+            echo json_encode($result);
+            break;
+        
+        case 'update_status_color':
+            requireAdmin();
+            $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+            $color = isset($_POST['color']) ? $_POST['color'] : '';
+            $result = updateStatusColor($pdo, $id, $color);
             echo json_encode($result);
             break;
             

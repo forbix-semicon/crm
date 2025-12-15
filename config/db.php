@@ -97,8 +97,22 @@ function initDatabase($pdo) {
     // Statuses table
     $pdo->exec("CREATE TABLE IF NOT EXISTS statuses (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE NOT NULL
+        name TEXT UNIQUE NOT NULL,
+        color TEXT DEFAULT '#e0e0e0'
     )");
+    // Ensure color column exists for older databases
+    $statusColumns = $pdo->query("PRAGMA table_info(statuses)")->fetchAll(PDO::FETCH_ASSOC);
+    $hasColor = false;
+    foreach ($statusColumns as $col) {
+        if (strtolower($col['name']) === 'color') {
+            $hasColor = true;
+            break;
+        }
+    }
+    if (!$hasColor) {
+        $pdo->exec("ALTER TABLE statuses ADD COLUMN color TEXT DEFAULT '#e0e0e0'");
+        $pdo->exec("UPDATE statuses SET color = '#e0e0e0' WHERE color IS NULL OR color = ''");
+    }
     
     // Sources table
     $pdo->exec("CREATE TABLE IF NOT EXISTS sources (
@@ -173,13 +187,20 @@ function initDatabase($pdo) {
         
         // Initialize default statuses
         $defaultStatuses = [
-            'Introduction Email', 'Talks going on', 'Quotation sent', 'Demo Requested',
-            'PO released', 'Waiting for Payment', 'Converted', 'Rejected',
-            'Follow-up soon', 'Follow-up later'
+            'Introduction Email' => '#5bc0de',
+            'Talks going on' => '#6c757d',
+            'Quotation sent' => '#17a2b8',
+            'Demo Requested' => '#ffc107',
+            'PO released' => '#20c997',
+            'Waiting for Payment' => '#fd7e14',
+            'Converted' => '#28a745',
+            'Rejected' => '#dc3545',
+            'Follow-up soon' => '#007bff',
+            'Follow-up later' => '#6610f2'
         ];
-        foreach ($defaultStatuses as $status) {
-            $stmt = $pdo->prepare("INSERT OR IGNORE INTO statuses (name) VALUES (?)");
-            $stmt->execute([$status]);
+        foreach ($defaultStatuses as $statusName => $color) {
+            $stmt = $pdo->prepare("INSERT OR IGNORE INTO statuses (name, color) VALUES (?, ?)");
+            $stmt->execute([$statusName, $color]);
         }
         
         // Mark defaults as initialized

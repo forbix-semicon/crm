@@ -192,6 +192,10 @@ $sources = getAllSources($pdo);
                     <input type="text" id="status_name" name="name" required>
                 </div>
                 <div class="form-group">
+                    <label for="status_color">Color:</label>
+                    <input type="color" id="status_color" name="color" value="#e0e0e0" style="width: 48px; height: 32px; padding: 0; border: 1px solid #ccc; cursor: pointer;">
+                </div>
+                <div class="form-group">
                     <button type="submit" class="btn-primary">Add Status</button>
                 </div>
             </div>
@@ -203,6 +207,7 @@ $sources = getAllSources($pdo);
                 <thead>
                     <tr>
                         <th>Name</th>
+                        <th>Color</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -210,6 +215,9 @@ $sources = getAllSources($pdo);
                     <?php foreach ($statuses as $status): ?>
                         <tr>
                             <td><?php echo htmlspecialchars($status['name']); ?></td>
+                            <td>
+                                <input type="color" value="<?php echo htmlspecialchars($status['color'] ?? '#e0e0e0'); ?>" onchange="updateStatusColor(<?php echo $status['id']; ?>, this.value)" style="width: 48px; height: 32px; padding: 0; border: 1px solid #ccc; cursor: pointer;">
+                            </td>
                             <td>
                                 <button type="button" class="btn-delete" data-id="<?php echo $status['id']; ?>" data-name="<?php echo htmlspecialchars($status['name'], ENT_QUOTES); ?>" onclick="deleteStatusById(<?php echo $status['id']; ?>, '<?php echo htmlspecialchars($status['name'], ENT_QUOTES); ?>')">Delete</button>
                             </td>

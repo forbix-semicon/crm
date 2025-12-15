@@ -9,6 +9,10 @@ $allowedProductCategories = array_values(array_map(function ($c) { return $c['na
 $allowedCustomerTypes = array_values(array_map(function ($c) { return $c['name']; }, $customerTypes));
 $allowedStatuses = array_values(array_map(function ($s) { return $s['name']; }, $statuses));
 $allowedSources = array_values(array_map(function ($s) { return $s['name']; }, $sources));
+$statusColorMap = [];
+foreach ($statuses as $s) {
+    $statusColorMap[$s['name']] = $s['color'] ?? '#e0e0e0';
+}
 ?>
 <script>
     // Expose allowed values for dropdowns in List/Modify popup
@@ -16,6 +20,7 @@ $allowedSources = array_values(array_map(function ($s) { return $s['name']; }, $
     window.allowedCustomerTypes = <?php echo json_encode($allowedCustomerTypes); ?>;
     window.allowedStatuses = <?php echo json_encode($allowedStatuses); ?>;
     window.allowedSources = <?php echo json_encode($allowedSources); ?>;
+    window.statusColors = <?php echo json_encode($statusColorMap); ?>;
 </script>
 <div class="agent-dashboard">
     <div class="form-section">
